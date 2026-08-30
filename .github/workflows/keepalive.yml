@@ -1,0 +1,29 @@
+# ============================================================
+#  Supabase キープアライブ
+#  Freeプランは7日間アクセスがないと一時停止されるため、
+#  毎週月曜にデータベースへ1回だけ問い合わせて起こしておく。
+#  GitHub Actions のパブリックリポジトリ実行は無料。
+# ============================================================
+name: Keep Supabase awake
+
+on:
+  schedule:
+    - cron: "0 0 * * 1" # 毎週月曜 09:00 JST
+  workflow_dispatch: # 手動実行もできる
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/notes?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+          echo "HTTP $code"
+          # 200 でも 401 でもデータベースには到達しているので成功扱い
+          if [ "$code" = "000" ]; then
+            echo "Supabase に接続できませんでした"
+            exit 1
+          fi
