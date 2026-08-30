@@ -746,7 +746,16 @@ const emptyRef = () => ({
 
 /** 模範回答の編集フォーム（記録フォームと同じ選択肢を使う） */
 function RefEditor({ initial, opts, addOpt, onSave, onCancel }) {
-  const [r, setR] = useState(() => ({ ...emptyRef(), ...(initial || {}) }));
+  const [r, setR] = useState(() => {
+    const base = emptyRef();
+    const src = initial || {};
+    return {
+      ...base, ...src,
+      appearance: src.appearance || {}, palate: src.palate || {},
+      aromaImp: src.aromaImp || [], aromaAfter: src.aromaAfter || [],
+      aroma1: src.aroma1 || [], aroma2: src.aroma2 || [], aroma3: src.aroma3 || [],
+    };
+  });
   const [focus, setFocus] = useState({ k: null, w: null });
   const t = r.type;
   const set = (k, v) => setR((p) => ({ ...p, [k]: v }));
@@ -862,6 +871,7 @@ function SensoryTable({ note, truth, model }) {
     if (!src) return null;
     return sub ? (src[key]?.[sub] || []) : (src[key] || []);
   };
+  const finishOf = (src) => (src ? (src.finish ? [src.finish] : []) : null);
   return (
     <>
       <div className="grp-t">外観</div>
@@ -886,18 +896,16 @@ function SensoryTable({ note, truth, model }) {
           truth={pick(truth, "palate", ax.id)}
           model={pick(model, "palate", ax.id)} />
       ))}
-      <CmpRow label="余韻"
-        mine={note.finish ? [note.finish] : []}
-        truth={truth ? (truth.finish ? [truth.finish] : []) : null}
-        model={model ? (model.finish ? [model.finish] : []) : null} />
+      <CmpRow label="余韻" mine={note.finish ? [note.finish] : []}
+        truth={finishOf(truth)} model={finishOf(model)} />
     </>
   );
 }
 
 /** 模範回答そのものの内容。mine を渡すと一致した語が塗られる */
 function RefView({ r, mine }) {
-  const t = r.type;
-  const hit = (w) => mine && [
+  const t = r.type || "red";
+  const hit = (w) => !!mine && [
     ...Object.values(mine.appearance || {}).flat(), ...(mine.aromaImp || []), ...(mine.aroma1 || []),
     ...(mine.aroma2 || []), ...(mine.aroma3 || []), ...(mine.aromaAfter || []),
     ...Object.values(mine.palate || {}).flat(), mine.finish,
@@ -1068,7 +1076,7 @@ function RefList({ refs, opts, addOpt, onSave, onDelete }) {
                 <button className="ibtn danger" onClick={() => { if (confirm(`${r.grape} の模範回答を削除しますか?`)) onDelete(r.id); }}>{Ico.trash}</button>
               </div>
               <div className="card-w">
-                {[...r.aroma1, ...r.aroma3].slice(0, 6).map((w) => (
+                {[...(r.aroma1 || []), ...(r.aroma3 || [])].slice(0, 6).map((w) => (
                   <span key={w} className="mini" style={{ background: wordMeta(w, r.type).color }}>{w}</span>
                 ))}
               </div>
