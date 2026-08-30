@@ -186,7 +186,7 @@ select id, email from auth.users;
 
 **2. CSV を用意する**
 
-`tools/refs-template.csv` をコピーして書き換えます。1行が1件の模範回答です。
+`tools/refs-white-sample.csv` をコピーして書き換えます。1行が1件の模範回答です。
 
 - `type` は `red` / `white` / `rose` / `orange` / `sparkling`
 - 複数の語を入れる欄は「、」で区切ります（例: `イチゴ、ラズベリー、スミレ`）
@@ -221,7 +221,7 @@ supabase/
   keepalive.yml        週1回のキープアライブ
 tools/
   import-refs.py       模範回答をCSVから一括登録するスクリプト
-  refs-template.csv    その書式サンプル
+  refs-white-sample.csv 白ワイン9件の実データ（書式サンプル）
 build-app.py           プロトタイプ版から App.jsx を再生成するスクリプト
 ```
 

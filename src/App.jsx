@@ -488,6 +488,22 @@ const PAL_AXES = (t) => [
 ];
 const FINISH = ["短い", "やや短い", "やや長い", "長い"];
 
+const OTHER_AXES = (t) => [
+  {
+    id: "eval", n: "評価", d: "このワインをどう位置づけるか、ひとことで。",
+    o: t === "red" || t === "orange"
+      ? ["シンプル、フレッシュ感を楽しむ", "成熟度が高く、豊か", "濃縮し、力強い", "エレガントで、余韻の長い", "複雑性があり、引き締まった"]
+      : ["シンプル、フレッシュ感を楽しむ", "成熟度が高く、豊かな", "濃縮し、力強い", "エレガントで、ミネラリー", "滑らかで、バランスが良い", "ポテンシャルの高い"],
+  },
+  {
+    id: "temp", n: "適正温度", d: "いちばん美味しく感じる温度帯。",
+    o: t === "red" || t === "orange"
+      ? ["10度未満", "10 - 13度", "14 - 16度", "17 - 20度", "21度以上"]
+      : ["8度未満", "8 - 10度", "11 - 14度", "15 - 18度", "19度以上"],
+  },
+  { id: "glass", n: "グラス", d: "この香りと味わいを活かす形。", o: ["小ぶり", "中庸", "大ぶり", "バルーン型", "チューリップ型"] },
+];
+
 /* ロゼ・オレンジ・泡は用語選択用紙に無いため、赤白の用語を組み合わせて構成する */
 const pick = (grp, words) => ({ ...grp, w: grp.w.filter(([w]) => words.includes(w)) });
 A1.rose = [pick(A1.red[0], ["イチゴ", "ラズベリー", "ブルーベリー", "カシス"]), ...A1.white];
@@ -741,7 +757,7 @@ function Accordion({ title, count, children }) {
 const emptyRef = () => ({
   id: "", grape: "", type: "red", country: "", region: "",
   appearance: {}, aromaImp: [], aroma1: [], aroma2: [], aroma3: [], aromaAfter: [],
-  palate: {}, finish: "", memo: "",
+  palate: {}, finish: "", other: {}, memo: "",
 });
 
 /** 模範回答の編集フォーム（記録フォームと同じ選択肢を使う） */
@@ -751,7 +767,7 @@ function RefEditor({ initial, opts, addOpt, onSave, onCancel }) {
     const src = initial || {};
     return {
       ...base, ...src,
-      appearance: src.appearance || {}, palate: src.palate || {},
+      appearance: src.appearance || {}, palate: src.palate || {}, other: src.other || {},
       aromaImp: src.aromaImp || [], aromaAfter: src.aromaAfter || [],
       aroma1: src.aroma1 || [], aroma2: src.aroma2 || [], aroma3: src.aroma3 || [],
     };
@@ -823,6 +839,13 @@ function RefEditor({ initial, opts, addOpt, onSave, onCancel }) {
             {FINISH.map((o) => <button key={o} className={"opt" + (r.finish === o ? " on" : "")} onClick={() => set("finish", r.finish === o ? "" : o)}>{o}</button>)}
           </div>
         </div>
+        <div className="ax" style={{ marginTop: 22 }}>
+          <div className="ax-h"><span className="ax-n">その他</span></div>
+        </div>
+        {OTHER_AXES(t).map((ax) => (
+          <OptionAxis key={ax.id} ax={{ ...ax, d: null }} sel={r.other[ax.id]} onToggle={(v) => toggle("other", ax.id, v)}
+            extra={ok(`oth:${t}:${ax.id}`)} onAddOption={addO(`oth:${t}:${ax.id}`)} />
+        ))}
         <div className="fld" style={{ marginTop: 16 }}><label className="lab">覚え書き</label>
           <textarea className="inp" value={r.memo} onChange={(e) => set("memo", e.target.value)}
             placeholder="見分けの決め手、似ている品種との違い、産地による差など。" /></div>
@@ -898,6 +921,14 @@ function SensoryTable({ note, truth, model }) {
       ))}
       <CmpRow label="余韻" mine={note.finish ? [note.finish] : []}
         truth={finishOf(truth)} model={finishOf(model)} />
+
+      <div className="grp-t">その他</div>
+      {OTHER_AXES(t).map((ax) => (
+        <CmpRow key={ax.id} label={ax.n}
+          mine={note.other?.[ax.id]}
+          truth={pick(truth, "other", ax.id)}
+          model={pick(model, "other", ax.id)} />
+      ))}
     </>
   );
 }
@@ -930,6 +961,8 @@ function RefView({ r, mine }) {
       <div className="grp-t">味わい</div>
       {PAL_AXES(t).map((ax) => line(ax.n, r.palate?.[ax.id]))}
       {line("余韻", r.finish ? [r.finish] : [])}
+      <div className="grp-t">その他</div>
+      {OTHER_AXES(t).map((ax) => line(ax.n, r.other?.[ax.id]))}
     </div>
   );
 }
@@ -1107,11 +1140,12 @@ function buildComment(n) {
   PAL_AXES(n.type).forEach((ax) => { if (pa[ax.id]?.length) pl.push(`${ax.n}は${pa[ax.id].join("、")}`); });
   if (pl.length) p.push(`味わいは${pl.join("、")}。`);
   if (n.finish) p.push(`余韻は${n.finish}。`);
+  if (n.other?.eval?.length) p.push(`${n.other.eval.join("、")}一本。`);
   return p.join("");
 }
 
 /* ================= 記録フォーム ================= */
-const emptySensory = () => ({ appearance: {}, aromaImp: [], aromaAfter: [], aroma1: [], aroma2: [], aroma3: [], palate: {}, finish: "" });
+const emptySensory = () => ({ appearance: {}, aromaImp: [], aromaAfter: [], aroma1: [], aroma2: [], aroma3: [], palate: {}, finish: "", other: {} });
 const emptyForm = () => ({
   name: "", producer: "", country: "", region: "", grape: "", vintage: "", alcohol: "",
   type: "red", ...emptySensory(), appearanceMemo: "", aromaMemo: "", palateMemo: "",
@@ -1128,7 +1162,7 @@ function NewNote({ onSave, setToast, opts, addOpt, initial, onCancel, refs }) {
     return {
       ...base, ...initial,
       type: initial.type || "red",
-      appearance: initial.appearance || {}, palate: initial.palate || {},
+      appearance: initial.appearance || {}, palate: initial.palate || {}, other: initial.other || {},
       aromaImp: initial.aromaImp || [], aromaAfter: initial.aromaAfter || [], aroma1: initial.aroma1 || [], aroma2: initial.aroma2 || [], aroma3: initial.aroma3 || [],
       blind: { ...base.blind, ...(initial.blind || {}), done: !!initial.blind?.on },
       truth: { ...base.truth, ...(initial.truth || {}) },
@@ -1325,11 +1359,11 @@ function NewNote({ onSave, setToast, opts, addOpt, initial, onCancel, refs }) {
         {!blindOn ? <>{plainAnswers}{photoAndBasic}
           <div className="fld"><label className="lab">飲んだ日</label>
             <input className="inp" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div></>
-          : f.blind.done ? <div className="locked">ブラインド終了。ラベルの入力と答え合わせは05にあります。</div>
+          : f.blind.done ? <div className="locked">ブラインド終了。ラベルの入力と答え合わせは06にあります。</div>
             : <>
               <div className="fld"><label className="lab">飲んだ日</label>
                 <input className="inp" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
-              <div className="locked">ブラインド中です。<br />02〜04を進めてから、05で自分の答えを書いてください。</div>
+              <div className="locked">ブラインド中です。<br />02〜05を進めてから、06で自分の答えを書いてください。</div>
             </>}
       </section>
 
@@ -1390,9 +1424,18 @@ function NewNote({ onSave, setToast, opts, addOpt, initial, onCancel, refs }) {
       </Step>
 
       {/* 05 */}
+      <Step key="oth" n="05" title="その他" collapsible
+        desc="用語選択用紙の評価・適正温度・グラスにあたる項目です。">
+        {OTHER_AXES(t).map((ax) => (
+          <OptionAxis key={ax.id} ax={ax} sel={f.other[ax.id]} onToggle={(v) => toggleIn(null, "other", ax.id, v)}
+            extra={ok(`oth:${t}:${ax.id}`)} onAddOption={addO(`oth:${t}:${ax.id}`)} />
+        ))}
+      </Step>
+
+      {/* 06 */}
       {blindOn && (
       <section className="step">
-        <div className="step-hd"><span className="step-n">05</span><span className="step-t">答え合わせ</span></div>
+        <div className="step-hd"><span className="step-n">06</span><span className="step-t">答え合わせ</span></div>
         {(
           <>
             <p className="step-d">ラベルを見る前に、いまの分析からの推測を書きます。外した品種は「振り返り」にたまります。</p>
@@ -1495,7 +1538,7 @@ function NewNote({ onSave, setToast, opts, addOpt, initial, onCancel, refs }) {
 
       {/* 06 */}
       <section className="step">
-        <div className="step-hd"><span className="step-n">{blindOn ? "06" : "05"}</span><span className="step-t">好きだったか</span></div>
+        <div className="step-hd"><span className="step-n">{blindOn ? "07" : "06"}</span><span className="step-t">好きだったか</span></div>
         <p className="step-d">上手い下手ではなく、また飲みたいかどうかで決めて大丈夫です。</p>
         <div className="fld">
           <label className="lab">5段階評価</label>
@@ -1519,6 +1562,7 @@ function NewNote({ onSave, setToast, opts, addOpt, initial, onCancel, refs }) {
 
 /* ================= Excel書き出し ================= */
 const APP_COLS = [["clarity", "清澄度"], ["shine", "輝き"], ["hue", "色調"], ["depth", "濃淡"], ["visc", "粘性"], ["imp", "外観の印象"]];
+const OTHER_COLS = [["eval", "評価"], ["temp", "適正温度"], ["glass", "グラス"]];
 const PAL_COLS = [["attack", "アタック"], ["sweet", "甘み"], ["acid", "酸味"], ["tannin", "タンニン分"], ["bitter", "苦味"], ["balance", "バランス"], ["alc", "アルコール"]];
 const jn = (a) => (a || []).join("、");
 const mark = (v) => (v === true ? "○" : v === false ? "×" : "");
@@ -1531,6 +1575,7 @@ function sensoryCols(src, type, prefix) {
     ["香りの第一印象", "第一アロマ", "第二アロマ", "第三アロマ", "香りの印象"].forEach((l) => { o[prefix + l] = ""; });
     PAL_COLS.forEach(([, l]) => { o[prefix + l] = ""; });
     o[prefix + "余韻"] = "";
+    OTHER_COLS.forEach(([, l]) => { o[prefix + l] = ""; });
     return o;
   }
   APP_COLS.forEach(([k, l]) => { o[prefix + l] = jn(src.appearance?.[k]); });
@@ -1541,6 +1586,7 @@ function sensoryCols(src, type, prefix) {
   o[prefix + "香りの印象"] = jn(src.aromaAfter);
   PAL_COLS.forEach(([k, l]) => { o[prefix + l] = jn(src.palate?.[k]); });
   o[prefix + "余韻"] = src.finish || "";
+  OTHER_COLS.forEach(([k, l]) => { o[prefix + l] = jn(src.other?.[k]); });
   return o;
 }
 
@@ -1600,6 +1646,7 @@ async function exportExcel(notes, refs) {
     push("香り", "香りの印象", n.aromaAfter, truth?.aromaAfter, model?.aromaAfter);
     PAL_COLS.forEach(([k, l]) => push("味わい", l, n.palate?.[k], truth?.palate?.[k], model?.palate?.[k]));
     push("味わい", "余韻", n.finish ? [n.finish] : [], truth?.finish ? [truth.finish] : [], model?.finish ? [model.finish] : []);
+    OTHER_COLS.forEach(([k, l]) => push("その他", l, n.other?.[k], truth?.other?.[k], model?.other?.[k]));
   });
 
   /* --- 3枚目：模範回答 --- */

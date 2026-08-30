@@ -15,12 +15,13 @@ CSV から Supabase の references テーブルに流し込む INSERT 文を作�
 CSV の書式（1行目はヘッダー、区切りはカンマ）:
   type,grape,country,region,memo,清澄度,輝き,色調,濃淡,粘性,外観の印象,
   第一印象,第一アロマ,第二アロマ,第三アロマ,香りの印象,
-  アタック,甘み,酸味,タンニン分,苦味,バランス,アルコール,余韻
+  アタック,甘み,酸味,タンニン分,苦味,バランス,アルコール,余韻,評価,適正温度,グラス
 
   - type は red / white / rose / orange / sparkling
   - 複数の語を入れる欄は「、」で区切る（例: イチゴ、ラズベリー、スミレ）
   - 使わない欄は空でよい
   - 余韻は1つだけ
+  - 評価だけは語の中に読点を含むため「／」で区切る
 """
 import csv
 import json
@@ -36,6 +37,7 @@ PAL = {"アタック": "attack", "甘み": "sweet", "酸味": "acid",
        "アルコール": "alc"}
 AROMA = {"第一印象": "aromaImp", "第一アロマ": "aroma1", "第二アロマ": "aroma2",
          "第三アロマ": "aroma3", "香りの印象": "aromaAfter"}
+OTHER = {"評価": "eval", "適正温度": "temp", "グラス": "glass"}
 
 
 def split(cell):
@@ -78,6 +80,10 @@ def main():
                 "appearance": {v: split(row.get(k, "")) for k, v in APP.items() if split(row.get(k, ""))},
                 "palate": {v: split(row.get(k, "")) for k, v in PAL.items() if split(row.get(k, ""))},
                 "finish": (split(row.get("余韻", "")) or [""])[0],
+                # 評価は語の中に読点を含むので「／」で区切る
+                "other": {v: ([x.strip() for x in row.get(k, "").split("／") if x.strip()]
+                              if k == "評価" else split(row.get(k, "")))
+                          for k, v in OTHER.items() if row.get(k, "")},
             }
             for k, v in AROMA.items():
                 ref[v] = split(row.get(k, ""))
