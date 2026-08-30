@@ -33,11 +33,12 @@ src = src.replace(old, '''async function callClaude(content) {
 ''')
 
 # Excel は必要になったときだけ読み込む
-src = src.replace('function exportExcel(notes) {', 'async function exportExcel(notes) {\n  const XLSX = await import("xlsx");')
-src = src.replace('''            try { exportExcel(notes); setToast("Excelを書き出しました"); }
-            catch { setToast("書き出せませんでした"); }''',
-'''            exportExcel(notes).then(() => setToast("Excelを書き出しました"))
-              .catch(() => setToast("書き出せませんでした"));''')
+src = src.replace('function exportExcel(notes, refs) {',
+                  'async function exportExcel(notes, refs) {\n  const XLSX = await import("xlsx");')
+src = src.replace('try { exportExcel(notes, refs); setToast("Excelを書き出しました"); }',
+                  'exportExcel(notes, refs).then(() => setToast("Excelを書き出しました"))')
+src = src.replace('catch { setToast("書き出せませんでした"); }',
+                  '.catch(() => setToast("書き出せませんでした"));')
 
 # 写真・選択肢はサーバー保存
 src = src.replace('    try { await window.storage.delete(`wn:photo:${id}`); } catch {}', '    await deletePhoto(id);')

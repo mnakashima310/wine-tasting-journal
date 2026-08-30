@@ -185,7 +185,6 @@ textarea.inp{min-height:80px;resize:vertical;line-height:1.8;font-size:15px}
 .listbar{display:flex;align-items:center;gap:10px;padding:16px 20px 0}
 .listbar-n{flex:1;font-size:13px;font-weight:600;color:var(--sub)}
 .linkbtn{font-size:12.5px;font-weight:600;color:var(--sub);text-decoration:underline;padding:6px}
-.seed{margin-top:20px;padding:13px 22px;background:var(--card);border:1px solid var(--wine);color:var(--wine);border-radius:2px;font-size:13.5px;font-weight:600;letter-spacing:.1em}
 .search{margin:14px 20px 6px;position:relative}
 .search .inp{padding-left:38px}
 .search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%)}
@@ -1010,7 +1009,7 @@ function TypeTabs({ value, onChange, items }) {
 const kana = (a, b) => (a || "").localeCompare(b || "", "ja");
 
 /* ================= 模範回答タブ ================= */
-function RefList({ refs, opts, addOpt, onSave, onDelete, onSeed }) {
+function RefList({ refs, opts, addOpt, onSave, onDelete }) {
   const [editing, setEditing] = useState(null);
   const [viewing, setViewing] = useState(null);
   const [filter, setFilter] = useState("all");
@@ -1046,7 +1045,6 @@ function RefList({ refs, opts, addOpt, onSave, onDelete, onSeed }) {
     <div>
       <div className="listbar">
         <span className="listbar-n">{refs.length}件の模範回答</span>
-        <button className="linkbtn" onClick={onSeed}>サンプル入れ直し</button>
         <button className="ibtn" onClick={() => setEditing(false)}>{Ico.plus}追加</button>
       </div>
 
@@ -1056,7 +1054,6 @@ function RefList({ refs, opts, addOpt, onSave, onDelete, onSeed }) {
         <div className="empty">
           <div className="em-t">{refs.length ? "この種類の登録はありません" : "まだ模範回答がありません"}</div>
           <p>品種ごとの模範回答を登録しておくと、<br />ブラインドの答え合わせでいつでも参照できます。</p>
-          {!refs.length && <button className="seed" onClick={onSeed}>サンプルデータで表示を見る</button>}
         </div>
       ) : (
         <div style={{ paddingTop: 10 }}>
@@ -1518,73 +1515,103 @@ const PAL_COLS = [["attack", "アタック"], ["sweet", "甘み"], ["acid", "酸
 const jn = (a) => (a || []).join("、");
 const mark = (v) => (v === true ? "○" : v === false ? "×" : "");
 
-async function exportExcel(notes) {
+/** 1件分の官能項目を {項目名: 値} にして返す。prefix を付けると正解・模範用になる */
+function sensoryCols(src, type, prefix) {
+  const o = {};
+  if (!src) {
+    APP_COLS.forEach(([, l]) => { o[prefix + l] = ""; });
+    ["香りの第一印象", "第一アロマ", "第二アロマ", "第三アロマ", "香りの印象"].forEach((l) => { o[prefix + l] = ""; });
+    PAL_COLS.forEach(([, l]) => { o[prefix + l] = ""; });
+    o[prefix + "余韻"] = "";
+    return o;
+  }
+  APP_COLS.forEach(([k, l]) => { o[prefix + l] = jn(src.appearance?.[k]); });
+  o[prefix + "香りの第一印象"] = jn(src.aromaImp);
+  o[prefix + "第一アロマ"] = jn(src.aroma1);
+  o[prefix + "第二アロマ"] = jn(src.aroma2);
+  o[prefix + "第三アロマ"] = jn(src.aroma3);
+  o[prefix + "香りの印象"] = jn(src.aromaAfter);
+  PAL_COLS.forEach(([k, l]) => { o[prefix + l] = jn(src.palate?.[k]); });
+  o[prefix + "余韻"] = src.finish || "";
+  return o;
+}
+
+async function exportExcel(notes, refs) {
   const XLSX = await import("xlsx");
   const sorted = [...notes].sort((a, b) => (b.date + b.id).localeCompare(a.date + a.id));
 
+  /* --- 1枚目：記録（自分の回答＋登録した正解） --- */
   const main = sorted.map((n) => {
-    const r = {
+    const b = n.blind || {};
+    return {
       "日付": n.date || "", "タイプ": typeName(n.type), "ワイン名": n.name || "", "生産者": n.producer || "",
       "産地（国）": n.country || "", "産地（地方・村）": n.region || "", "ブドウ品種": n.grape || "",
       "ヴィンテージ": n.vintage || "", "アルコール度数": n.alcohol || "", "評価（5段階）": n.rating || "",
-      "ブラインド": n.blind?.on ? "はい" : "いいえ",
-    };
-    APP_COLS.forEach(([k, l]) => { r[l] = jn(n.appearance?.[k]); });
-    r["香りの第一印象"] = jn(n.aromaImp);
-    r["第一アロマ"] = jn(n.aroma1); r["第二アロマ"] = jn(n.aroma2); r["第三アロマ"] = jn(n.aroma3);
-    r["香りの印象"] = jn(n.aromaAfter);
-    PAL_COLS.forEach(([k, l]) => { r[l] = jn(n.palate?.[k]); });
-    r["余韻"] = n.finish || "";
-    r["外観のメモ"] = n.appearanceMemo || ""; r["香りのメモ"] = n.aromaMemo || "";
-    r["味わいのメモ"] = n.palateMemo || ""; r["自由メモ"] = n.memo || "";
-    return r;
-  });
-
-  const blindRows = sorted.filter((n) => n.blind?.on).map((n) => {
-    const b = n.blind;
-    return {
-      "日付": n.date || "", "ワイン名": n.name || "",
-      "品種（自分）": b.grape || "", "品種（正解）": n.grape || "", "品種": mark(b.judge?.grape),
-      "国（自分）": b.country || "", "国（正解）": n.country || "", "国": mark(b.judge?.country),
-      "地方（自分）": b.region || "", "地方（正解）": n.region || "", "地方": mark(b.judge?.region),
-      "年（自分）": b.vintage || "", "年（正解）": n.vintage || "", "年": mark(b.judge?.vintage),
-      "度数（自分）": b.alcohol || "", "度数（正解）": n.alcohol || "", "度数": mark(b.judge?.alcohol),
+      "ブラインド": b.on ? "はい" : "いいえ",
+      "自分の回答（品種）": b.on ? (b.grape || "") : "",
+      "自分の回答（国）": b.on ? (b.country || "") : "",
+      "自分の回答（地方）": b.on ? (b.region || "") : "",
+      "自分の回答（年）": b.on ? (b.vintage || "") : "",
+      "自分の回答（度数）": b.on ? (b.alcohol || "") : "",
+      "正誤（品種）": b.on ? mark(b.judge?.grape) : "",
+      "正誤（国）": b.on ? mark(b.judge?.country) : "",
+      "正誤（地方）": b.on ? mark(b.judge?.region) : "",
+      "正誤（年）": b.on ? mark(b.judge?.vintage) : "",
+      "正誤（度数）": b.on ? mark(b.judge?.alcohol) : "",
       "そう考えた理由": b.memo || "",
+      ...sensoryCols(n, n.type, ""),
+      "官能の答え合わせ": n.truthOn ? "あり" : "",
+      ...sensoryCols(n.truthOn ? n.truth : null, n.type, "正解:"),
+      "外観のメモ": n.appearanceMemo || "", "香りのメモ": n.aromaMemo || "",
+      "味わいのメモ": n.palateMemo || "", "自由メモ": n.memo || "",
+      "写真": n.hasPhoto ? "あり" : "",
+      "ID": n.id,
     };
   });
 
-  const truthRows = [];
-  sorted.filter((n) => n.truthOn && n.truth).forEach((n) => {
-    const add = (label, mine, truth) => {
-      if (!(mine || []).length && !(truth || []).length) return;
-      truthRows.push({
-        "日付": n.date || "", "ワイン名": n.name || "", "項目": label,
-        "自分": jn(mine), "正解": jn(truth), "一致": jn(mine) === jn(truth) ? "○" : "×",
+  /* --- 2枚目：項目ごとの縦持ち（自分／正解／模範を突き合わせやすい形） --- */
+  const long = [];
+  sorted.forEach((n) => {
+    const t = n.type;
+    const truth = n.truthOn ? n.truth : null;
+    const model = (refs || []).find((r) => r.type === t && r.grape && n.grape &&
+      r.grape.replace(/[\s・ー]/g, "") === n.grape.replace(/[\s・ー]/g, ""));
+    const push = (cat, label, mine, tr, md) => {
+      if (!jn(mine) && !jn(tr) && !jn(md)) return;
+      long.push({
+        "日付": n.date || "", "ワイン名": n.name || "", "品種": n.grape || "",
+        "区分": cat, "項目": label,
+        "自分": jn(mine), "正解": jn(tr), "模範": jn(md),
       });
     };
-    APP_COLS.forEach(([k, l]) => add(l, n.appearance?.[k], n.truth.appearance?.[k]));
-    add("第一アロマ", n.aroma1, n.truth.aroma1);
-    add("第二アロマ", n.aroma2, n.truth.aroma2);
-    add("第三アロマ", n.aroma3, n.truth.aroma3);
-    add("香りの印象", n.aromaAfter, n.truth.aromaAfter);
-    PAL_COLS.forEach(([k, l]) => add(l, n.palate?.[k], n.truth.palate?.[k]));
-    add("余韻", n.finish ? [n.finish] : [], n.truth.finish ? [n.truth.finish] : []);
+    APP_COLS.forEach(([k, l]) => push("外観", l, n.appearance?.[k], truth?.appearance?.[k], model?.appearance?.[k]));
+    push("香り", "第一印象", n.aromaImp, truth?.aromaImp, model?.aromaImp);
+    push("香り", "第一アロマ", n.aroma1, truth?.aroma1, model?.aroma1);
+    push("香り", "第二アロマ", n.aroma2, truth?.aroma2, model?.aroma2);
+    push("香り", "第三アロマ", n.aroma3, truth?.aroma3, model?.aroma3);
+    push("香り", "香りの印象", n.aromaAfter, truth?.aromaAfter, model?.aromaAfter);
+    PAL_COLS.forEach(([k, l]) => push("味わい", l, n.palate?.[k], truth?.palate?.[k], model?.palate?.[k]));
+    push("味わい", "余韻", n.finish ? [n.finish] : [], truth?.finish ? [truth.finish] : [], model?.finish ? [model.finish] : []);
   });
 
+  /* --- 3枚目：模範回答 --- */
+  const refRows = [...(refs || [])].sort((a, b) => (a.grape || "").localeCompare(b.grape || "", "ja")).map((r) => ({
+    "タイプ": typeName(r.type), "ブドウ品種": r.grape || "",
+    "産地（国）": r.country || "", "産地（地方・村）": r.region || "",
+    ...sensoryCols(r, r.type, ""),
+    "覚え書き": r.memo || "", "ID": r.id,
+  }));
+
   const wb = XLSX.utils.book_new();
-  const s1 = XLSX.utils.json_to_sheet(main);
-  s1["!cols"] = Object.keys(main[0] || { a: 1 }).map((k) => ({ wch: Math.min(30, Math.max(10, k.length * 2 + 4)) }));
-  XLSX.utils.book_append_sheet(wb, s1, "記録");
-  if (blindRows.length) {
-    const s2 = XLSX.utils.json_to_sheet(blindRows);
-    s2["!cols"] = Object.keys(blindRows[0]).map((k) => ({ wch: k.length <= 3 ? 6 : 16 }));
-    XLSX.utils.book_append_sheet(wb, s2, "ブラインド");
-  }
-  if (truthRows.length) {
-    const s3 = XLSX.utils.json_to_sheet(truthRows);
-    s3["!cols"] = [{ wch: 12 }, { wch: 20 }, { wch: 14 }, { wch: 30 }, { wch: 30 }, { wch: 6 }];
-    XLSX.utils.book_append_sheet(wb, s3, "官能の答え合わせ");
-  }
+  const add = (rows, name, wch) => {
+    if (!rows.length) return;
+    const sh = XLSX.utils.json_to_sheet(rows);
+    sh["!cols"] = Object.keys(rows[0]).map((k) => ({ wch: wch || Math.min(28, Math.max(10, k.length * 2 + 2)) }));
+    XLSX.utils.book_append_sheet(wb, sh, name);
+  };
+  add(main, "記録");
+  add(long, "項目別");
+  add(refRows, "模範回答");
 
   const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -1597,7 +1624,7 @@ async function exportExcel(notes) {
 }
 
 /* ================= 一覧 ================= */
-function Notebook({ notes, onOpen, setToast, onSeed, onClearSamples }) {
+function Notebook({ notes, onOpen, setToast, refs }) {
   const [q, setQ] = useState("");
   const list = useMemo(() => {
     const k = q.trim().toLowerCase();
@@ -1612,14 +1639,9 @@ function Notebook({ notes, onOpen, setToast, onSeed, onClearSamples }) {
       {notes.length > 0 && (
         <div className="listbar">
           <span className="listbar-n">{notes.length}件の記録</span>
-          <button className="linkbtn" onClick={onSeed}>
-            {notes.some((n) => String(n.id).startsWith("sample-")) ? "サンプル入れ直し" : "サンプル追加"}
-          </button>
-          {notes.some((n) => String(n.id).startsWith("sample-")) &&
-            <button className="linkbtn" onClick={onClearSamples}>削除</button>}
           <button className="ibtn" onClick={() => {
-            exportExcel(notes).then(() => setToast("Excelを書き出しました"))
-              .catch(() => setToast("書き出せませんでした"));
+            exportExcel(notes, refs).then(() => setToast("Excelを書き出しました"))
+            .catch(() => setToast("書き出せませんでした"));
           }}>{Ico.download}Excel</button>
         </div>
       )}
@@ -1631,7 +1653,6 @@ function Notebook({ notes, onOpen, setToast, onSeed, onClearSamples }) {
         <div className="empty">
           <div className="em-t">{notes.length ? "見つかりませんでした" : "まだ1本目です"}</div>
           <p>{notes.length ? "別の言葉で探してみてください。" : "「記録する」から、いま飲んでいる1本を書きとめましょう。"}</p>
-          {!notes.length && <button className="seed" onClick={onSeed}>サンプルデータで表示を見る</button>}
         </div>
       ) : (
         <div style={{ paddingTop: 13 }}>
@@ -1751,7 +1772,7 @@ function Detail({ note, onBack, onDelete, onEdit, refs }) {
 }
 
 /* ================= 振り返り ================= */
-function Review({ notes, onOpen, onSeed }) {
+function Review({ notes, onOpen }) {
   const [open, setOpen] = useState(null);
   const [filter, setFilter] = useState("all");
   const [sort, setSort] = useState("weak");
@@ -1782,7 +1803,6 @@ function Review({ notes, onOpen, onSeed }) {
     <div className="empty">
       <div className="em-t">まだブラインドの記録がありません</div>
       <p>01で「ブラインド」を選ぶと、<br />品種ごとの正答率と過去の記録がここに並びます。</p>
-      <button className="seed" onClick={onSeed}>サンプルデータで表示を見る</button>
     </div>
   );
 
@@ -1838,203 +1858,6 @@ function Review({ notes, onOpen, onSeed }) {
   );
 }
 
-/* ================= サンプルデータ ================= */
-const SAMPLES = [
-  {
-    date: "2026-08-20", type: "red", name: "ジュヴレ・シャンベルタン", producer: "ドメーヌ・ルー",
-    country: "フランス", region: "ブルゴーニュ", grape: "ピノ・ノワール", vintage: "2021", alcohol: "13.0", rating: 4,
-    appearance: { clarity: ["澄んだ"], shine: ["輝きのある"], hue: ["ルビー", "縁が明るい"], depth: ["やや明るい"], visc: ["やや軽い"], imp: ["若い状態を抜けた"] },
-    aromaImp: ["開いている", "華やかな"], aroma1: ["イチゴ", "ラズベリー", "スミレ"], aroma2: [], aroma3: ["なめし皮", "キノコ"],
-    aromaAfter: ["熟成感が現れている", "第1アロマが強い"],
-    palate: { attack: ["やや軽い"], sweet: ["ドライ"], acid: ["生き生きとした"], tannin: ["シルキーな"], balance: ["スマートな"], alc: ["中程度"] },
-    finish: "やや長い", memo: "鴨のローストと。冷やしすぎたので途中から温度を上げた。講師の講評を正解として記録。",
-    truthOn: true,
-    truth: {
-      appearance: { clarity: ["澄んだ"], shine: ["輝きのある"], hue: ["ルビー", "ガーネット"], depth: ["やや明るい"], visc: ["やや軽い"], imp: ["やや熟成した"] },
-      aromaImp: ["開いている", "複雑な"],
-      aroma1: ["イチゴ", "ラズベリー", "スミレ", "ドライハーブ"], aroma2: [], aroma3: ["なめし皮", "キノコ", "スーボア"],
-      aromaAfter: ["熟成感が現れている", "第1アロマが強い"],
-      palate: { attack: ["やや軽い"], sweet: ["ドライ"], acid: ["生き生きとした"], tannin: ["溶け込んだ", "シルキーな"], balance: ["スマートな"], alc: ["中程度"] },
-      finish: "やや長い",
-    },
-    blind: { grape: "グルナッシュ", country: "フランス", region: "ローヌ", vintage: "2019", alcohol: "14.0", memo: "スパイス感に引っ張られてローヌにした。色の淡さと酸の高さを優先すべきだった。" },
-  },
-  {
-    date: "2026-08-12", type: "white", name: "ムルソー", producer: "ドメーヌ・ラフォン",
-    country: "フランス", region: "ブルゴーニュ", grape: "シャルドネ", vintage: "2022", alcohol: "13.0", rating: 5,
-    appearance: { clarity: ["澄んだ"], shine: ["輝きのある"], hue: ["黄金色がかった"], depth: ["やや濃い"], visc: ["ねっとりした"], imp: ["成熟度が高い"] },
-    aromaImp: ["豊かな", "複雑な"], aroma1: ["白桃", "アカシア"], aroma2: ["パン・ドゥ・ミ", "乳製品"], aroma3: ["ヴァニラ", "ヘーゼルナッツ"],
-    aromaAfter: ["木樽からのニュアンス"],
-    palate: { attack: ["強い"], sweet: ["まろやか"], acid: ["なめらかな"], bitter: ["旨みをともなった"], balance: ["豊潤な"], alc: ["やや強め"] },
-    finish: "長い", memo: "樽の効いた白。ブルゴーニュの上級だと思ったら当たった。",
-    blind: { grape: "シャルドネ", country: "フランス", region: "ブルゴーニュ", vintage: "2020", alcohol: "13.5", memo: "樽とナッツ、粘性の強さから樽熟のシャルドネ。年は熟成感からもう少し前だと思った。" },
-  },
-  {
-    date: "2026-08-05", type: "red", name: "シャトー・ラグランジュ", producer: "",
-    country: "フランス", region: "ボルドー", grape: "カベルネ・ソーヴィニヨン", vintage: "2019", alcohol: "13.5", rating: 4,
-    appearance: { clarity: ["深みのある"], shine: ["艶のある"], hue: ["紫がかった", "黒みを帯びた"], depth: ["濃い"], visc: ["やや強い"], imp: ["若々しい"] },
-    aromaImp: ["濃縮感がある", "深みのある"], aroma1: ["カシス", "ピーマン", "杉"], aroma2: [], aroma3: ["ヴァニラ", "タバコ", "チョコレート"],
-    aromaAfter: ["第1アロマが強い", "木樽からのニュアンス"],
-    palate: { attack: ["強い"], sweet: ["ドライ"], acid: ["堅固な"], tannin: ["緻密"], balance: ["骨格のしっかりした"], alc: ["やや強め"] },
-    finish: "長い", memo: "スクールの講評つき。",
-    truthOn: true,
-    truth: {
-      appearance: { clarity: ["深みのある"], shine: ["艶のある"], hue: ["紫がかった", "ガーネット"], depth: ["濃い"], visc: ["やや強い"], imp: ["若々しい"] },
-      aromaImp: ["濃縮感がある", "複雑な"],
-      aroma1: ["カシス", "ブラックベリー", "杉", "黒胡椒"], aroma2: [], aroma3: ["ヴァニラ", "タバコ", "ロースト"],
-      aromaAfter: ["第1アロマが強い", "木樽からのニュアンス"],
-      palate: { attack: ["強い"], sweet: ["ドライ"], acid: ["堅固な"], tannin: ["緻密"], balance: ["骨格のしっかりした"], alc: ["やや強め"] },
-      finish: "長い",
-    },
-    blind: { grape: "カベルネ・ソーヴィニヨン", country: "フランス", region: "ボルドー", vintage: "2019", alcohol: "13.5", memo: "ピーマンと杉、緻密なタンニン。ボルドー左岸で迷いなし。" },
-  },
-  {
-    date: "2026-07-28", type: "white", name: "リースリング カビネット", producer: "",
-    country: "ドイツ", region: "モーゼル", grape: "リースリング", vintage: "2021", alcohol: "8.5", rating: 4,
-    appearance: { clarity: ["澄んだ"], shine: ["輝きのある"], hue: ["グリーンがかった"], depth: ["淡い"], visc: ["さらっとした"], imp: ["若々しい"] },
-    aromaImp: ["フレッシュな", "ミネラリー"], aroma1: ["柑橘類", "青リンゴ", "火打石"], aroma2: [], aroma3: ["ペトロール（ケロセン）"],
-    aromaAfter: ["若々しい"],
-    palate: { attack: ["やや軽い"], sweet: ["ソフトな"], acid: ["はつらつとした"], bitter: ["控えめ"], balance: ["スリムな"], alc: ["控えめ"] },
-    finish: "やや長い", memo: "残糖があるのに重くない。講師に正解を教わって記録。",
-    truthOn: true,
-    truth: {
-      appearance: { clarity: ["澄んだ"], shine: ["輝きのある"], hue: ["グリーンがかった", "レモンイエロー"], depth: ["淡い"], visc: ["さらっとした"], imp: ["若々しい"] },
-      aromaImp: ["フレッシュな", "ミネラリー", "華やかな"],
-      aroma1: ["柑橘類", "青リンゴ", "白桃", "石灰"], aroma2: [], aroma3: ["ペトロール（ケロセン）", "蜂蜜"],
-      aromaAfter: ["若々しい", "第1アロマが強い"],
-      palate: { attack: ["やや軽い"], sweet: ["まろやか"], acid: ["はつらつとした"], bitter: ["控えめ"], balance: ["まろやかな"], alc: ["控えめ"] },
-      finish: "やや長い",
-    },
-    blind: { grape: "ソーヴィニヨン・ブラン", country: "フランス", region: "ロワール", vintage: "2022", alcohol: "12.0", memo: "青い柑橘と高い酸でソーヴィニヨン・ブランと判断。ペトロールを見落とした。度数の低さにも気づけなかった。" },
-  },
-  {
-    date: "2026-07-20", type: "red", name: "セントラル・オタゴ ピノ・ノワール", producer: "",
-    country: "ニュージーランド", region: "セントラル・オタゴ", grape: "ピノ・ノワール", vintage: "2022", alcohol: "13.5", rating: 3,
-    appearance: { clarity: ["澄んだ"], shine: ["輝きのある"], hue: ["ルビー"], depth: ["やや濃い"], visc: ["やや強い"], imp: ["若々しい"] },
-    aromaImp: ["開いている"], aroma1: ["ブラックチェリー", "スミレ", "メントール"], aroma2: [], aroma3: ["ヴァニラ"],
-    aromaAfter: ["第1アロマが強い"],
-    palate: { attack: ["やや強い"], sweet: ["まろやか"], acid: ["爽やかな"], tannin: ["なめらかな"], balance: ["ジューシーな"], alc: ["やや強め"] },
-    finish: "やや長い", memo: "果実が前に出るタイプ。",
-    blind: { grape: "ピノ・ノワール", country: "アメリカ", region: "ウィラメット・ヴァレー", vintage: "2022", alcohol: "13.5", memo: "品種は取れたが、果実の濃さで新世界とまでは分かっても国を外した。" },
-  },
-  {
-    date: "2026-07-10", type: "red", name: "ボジョレー・ヴィラージュ", producer: "",
-    country: "フランス", region: "ボジョレー", grape: "ガメイ", vintage: "2023", alcohol: "12.5", rating: 3,
-    appearance: { clarity: ["澄んだ"], shine: ["輝きのある"], hue: ["紫がかった", "ラズベリーレッド"], depth: ["明るい"], visc: ["さらっとした"], imp: ["若々しい"] },
-    aromaImp: ["華やかな"], aroma1: ["イチゴ", "ラズベリー", "牡丹"], aroma2: [], aroma3: [],
-    aromaAfter: ["若々しい", "第2アロマが強い"],
-    palate: { attack: ["軽い"], sweet: ["ソフトな"], acid: ["軽やかな"], tannin: ["サラサラとした"], balance: ["ジューシーな"], alc: ["やや軽い"] },
-    finish: "やや短い", memo: "少し冷やして。",
-    blind: { grape: "ピノ・ノワール", country: "フランス", region: "ブルゴーニュ", vintage: "2023", alcohol: "12.5", memo: "淡い色と軽いタンニンでピノにしたが、キャンディ香を拾えていればガメイだと分かったはず。" },
-  },
-  {
-    date: "2026-07-02", type: "white", name: "ナパ・ヴァレー シャルドネ", producer: "",
-    country: "アメリカ", region: "ナパ・ヴァレー", grape: "シャルドネ", vintage: "2021", alcohol: "14.5", rating: 3,
-    appearance: { clarity: ["澄んだ"], shine: ["輝きのある"], hue: ["黄金色"], depth: ["濃い"], visc: ["ねっとりした"], imp: ["成熟度が高い"] },
-    aromaImp: ["豊かな", "熟度の高い"], aroma1: ["パイナップル", "マンゴー"], aroma2: ["乳製品"], aroma3: ["ヴァニラ", "トースト", "蜂蜜"],
-    aromaAfter: ["木樽からのニュアンス"],
-    palate: { attack: ["インパクトのある"], sweet: ["豊かな"], acid: ["なめらかな"], bitter: ["穏やかな"], balance: ["厚みのある"], alc: ["強い"] },
-    finish: "やや長い", memo: "樽が強め。",
-    blind: { grape: "ヴィオニエ", country: "アメリカ", region: "ナパ・ヴァレー", vintage: "2021", alcohol: "14.5", memo: "南国果実と高いアルコールでヴィオニエと判断。樽由来の香りに引っ張られすぎた。" },
-  },
-];
-
-
-const SAMPLE_REFS = [
-  {
-    id: "ref-s1", type: "red", grape: "ピノ・ノワール", country: "フランス", region: "ブルゴーニュ",
-    appearance: { clarity: ["澄んだ"], shine: ["輝きのある"], hue: ["ルビー", "縁が明るい"], depth: ["やや明るい"], visc: ["やや軽い"], imp: ["若い状態を抜けた"] },
-    aromaImp: ["開いている", "華やかな"],
-    aroma1: ["イチゴ", "ラズベリー", "スミレ", "牡丹"], aroma2: [], aroma3: ["なめし皮", "キノコ", "スーボア", "紅茶"],
-    aromaAfter: ["熟成感が現れている", "第1アロマが強い"],
-    palate: { attack: ["やや軽い"], sweet: ["ドライ"], acid: ["生き生きとした"], tannin: ["シルキーな", "溶け込んだ"], balance: ["スマートな"], alc: ["中程度"] },
-    finish: "やや長い",
-    memo: "色は淡くエッジが明るい。酸が高く、タンニンは細かい。ガメイとの違いはスミレと紅茶、そして余韻の長さ。",
-  },
-  {
-    id: "ref-s7", type: "red", grape: "ピノ・ノワール", country: "フランス", region: "ロワール",
-    appearance: { clarity: ["澄んだ"], shine: ["輝きのある"], hue: ["ルビー", "ラズベリーレッド"], depth: ["明るい"], visc: ["さらっとした"], imp: ["若々しい"] },
-    aromaImp: ["開いている", "ミネラリー"],
-    aroma1: ["イチゴ", "ラズベリー", "牡丹", "シダ"], aroma2: [], aroma3: ["紅茶"],
-    aromaAfter: ["若々しい", "第1アロマが強い"],
-    palate: { attack: ["軽い"], sweet: ["ドライ"], acid: ["生き生きとした"], tannin: ["サラサラとした"], balance: ["スマートな"], alc: ["やや軽い"] },
-    finish: "やや短い",
-    memo: "同じピノでもロワールは色がさらに淡く、酸が高くタンニンはごく軽い。樽の香りはほぼ無く、余韻は短め。ブルゴーニュとの違いはここに出る。",
-  },
-  {
-    id: "ref-s2", type: "red", grape: "カベルネ・ソーヴィニヨン", country: "フランス", region: "ボルドー",
-    appearance: { clarity: ["深みのある"], shine: ["艶のある"], hue: ["紫がかった", "黒みを帯びた"], depth: ["濃い"], visc: ["やや強い"], imp: ["若々しい"] },
-    aromaImp: ["濃縮感がある", "深みのある"],
-    aroma1: ["カシス", "ブラックベリー", "ピーマン", "杉"], aroma2: [], aroma3: ["ヴァニラ", "タバコ", "チョコレート", "樹脂"],
-    aromaAfter: ["第1アロマが強い", "木樽からのニュアンス"],
-    palate: { attack: ["強い"], sweet: ["ドライ"], acid: ["堅固な"], tannin: ["緻密", "収斂性のある"], balance: ["骨格のしっかりした"], alc: ["やや強め"] },
-    finish: "長い",
-    memo: "ピーマンと杉が決め手。メルロより色が濃く、タンニンが緻密で酸も高い。",
-  },
-  {
-    id: "ref-s3", type: "red", grape: "ガメイ", country: "フランス", region: "ボジョレー",
-    appearance: { clarity: ["澄んだ"], shine: ["輝きのある"], hue: ["紫がかった", "ラズベリーレッド"], depth: ["明るい"], visc: ["さらっとした"], imp: ["若々しい"] },
-    aromaImp: ["華やかな"],
-    aroma1: ["イチゴ", "ラズベリー", "牡丹", "ゼラニウム"], aroma2: [], aroma3: [],
-    aromaAfter: ["若々しい", "第2アロマが強い"],
-    palate: { attack: ["軽い"], sweet: ["ソフトな"], acid: ["軽やかな"], tannin: ["サラサラとした"], balance: ["ジューシーな"], alc: ["やや軽い"] },
-    finish: "やや短い",
-    memo: "ピノより紫が強く、タンニンはさらさら。第2アロマ（キャンディ様の発酵香）が目立つのが最大の違い。",
-  },
-  {
-    id: "ref-s4", type: "white", grape: "シャルドネ", country: "フランス", region: "ブルゴーニュ",
-    appearance: { clarity: ["澄んだ"], shine: ["輝きのある"], hue: ["黄金色がかった"], depth: ["やや濃い"], visc: ["ねっとりした"], imp: ["成熟度が高い"] },
-    aromaImp: ["豊かな", "複雑な"],
-    aroma1: ["白桃", "リンゴ", "アカシア"], aroma2: ["パン・ドゥ・ミ", "乳製品"], aroma3: ["ヴァニラ", "ヘーゼルナッツ", "トースト"],
-    aromaAfter: ["木樽からのニュアンス"],
-    palate: { attack: ["強い"], sweet: ["まろやか"], acid: ["なめらかな"], bitter: ["旨みをともなった"], balance: ["豊潤な"], alc: ["やや強め"] },
-    finish: "長い",
-    memo: "品種固有の香りは弱く、樽と乳酸発酵の香りで構成される。粘性の強さとナッツ香が手がかり。",
-  },
-  {
-    id: "ref-s5", type: "white", grape: "リースリング", country: "ドイツ", region: "モーゼル",
-    appearance: { clarity: ["澄んだ"], shine: ["輝きのある"], hue: ["グリーンがかった"], depth: ["淡い"], visc: ["さらっとした"], imp: ["若々しい"] },
-    aromaImp: ["フレッシュな", "ミネラリー"],
-    aroma1: ["柑橘類", "青リンゴ", "火打石", "石灰"], aroma2: [], aroma3: ["ペトロール（ケロセン）", "蜂蜜"],
-    aromaAfter: ["若々しい"],
-    palate: { attack: ["やや軽い"], sweet: ["ソフトな"], acid: ["はつらつとした"], bitter: ["控えめ"], balance: ["スリムな"], alc: ["控えめ"] },
-    finish: "やや長い",
-    memo: "度数の低さと残糖、そしてペトロール香。ソーヴィニヨン・ブランとは、青いハーブの有無と甘みで見分ける。",
-  },
-  {
-    id: "ref-s6", type: "white", grape: "ソーヴィニヨン・ブラン", country: "フランス", region: "ロワール",
-    appearance: { clarity: ["澄んだ"], shine: ["輝きのある"], hue: ["グリーンがかった"], depth: ["淡い"], visc: ["さらっとした"], imp: ["若々しい"] },
-    aromaImp: ["フレッシュな", "ミネラリー"],
-    aroma1: ["柑橘類", "パッションフルーツ", "ハーブ", "タイム", "火打石"], aroma2: [], aroma3: [],
-    aromaAfter: ["若々しい", "第1アロマが強い"],
-    palate: { attack: ["やや軽い"], sweet: ["ドライ"], acid: ["はつらつとした"], bitter: ["控えめ"], balance: ["スリムな"], alc: ["中程度"] },
-    finish: "やや長い",
-    memo: "青いハーブと強い柑橘。リースリングとの違いは、辛口であることとペトロールが無いこと。",
-  },
-];
-
-const norm2 = (x) => (x || "").toLowerCase().replace(/[\s・ー\-／/]/g, "");
-function buildSamples() {
-  return SAMPLES.map((x, i) => {
-    const b = x.blind;
-    const judge = {};
-    [["grape"], ["country"], ["region"]].forEach(([k]) => {
-      const a = norm2(b[k]), c = norm2(x[k]);
-      judge[k] = a && c ? (a.includes(c) || c.includes(a)) : null;
-    });
-    ["vintage", "alcohol"].forEach((k) => {
-      judge[k] = b[k] && x[k] ? parseFloat(b[k]) === parseFloat(x[k]) : null;
-    });
-    return {
-      ...x, id: `sample-${i}`, v: 3, hasPhoto: false,
-      appearanceMemo: "", aromaMemo: "", palateMemo: "",
-      truthOn: !!x.truthOn,
-      truth: x.truth || { appearance: {}, aromaImp: [], aromaAfter: [], aroma1: [], aroma2: [], aroma3: [], palate: {}, finish: "" },
-      blind: { ...b, on: true, done: true, judge, suggestions: null },
-    };
-  });
-}
-
 /* ================= App ================= */
 export default function App({ user, onSignOut }) {
   const [tab, setTab] = useState("new");
@@ -2048,35 +1871,6 @@ export default function App({ user, onSignOut }) {
 
   useEffect(() => { Promise.all([loadNotes(), loadOpts(), loadRefs()]).then(([n, o, r]) => { setNotes(n); setOpts(o); setRefs(r); setReady(true); }); }, []);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(""), 2600); return () => clearTimeout(t); }, [toast]);
-
-  const seed = async () => {
-    const samples = buildSamples();
-    const kept = notes.filter((n) => !String(n.id).startsWith("sample-"));
-    const next = [...samples, ...kept].sort((a, b) => (b.date + b.id).localeCompare(a.date + a.id));
-    setNotes(next); await saveNotes(next);
-
-    const keptRefs = refs.filter((r) => !String(r.id).startsWith("ref-s"));
-    const nr = [...SAMPLE_REFS, ...keptRefs];
-    setRefs(nr); await saveRefs(nr);
-
-    setToast(`サンプルを入れ直しました（記録${samples.length}件・模範回答${SAMPLE_REFS.length}件）`);
-  };
-  const clearSamples = async () => {
-    const next = notes.filter((n) => !String(n.id).startsWith("sample-"));
-    setNotes(next); await saveNotes(next);
-    const nr = refs.filter((r) => !String(r.id).startsWith("ref-s"));
-    setRefs(nr); await saveRefs(nr);
-    setToast("サンプルを削除しました");
-  };
-
-  const upsertRef = async (r) => {
-    const next = refs.some((x) => x.id === r.id) ? refs.map((x) => (x.id === r.id ? r : x)) : [...refs, r];
-    setRefs(next); await saveRefs(next); setToast("模範回答を保存しました");
-  };
-  const removeRef = async (id) => {
-    const next = refs.filter((x) => x.id !== id);
-    setRefs(next); await saveRefs(next); setToast("模範回答を削除しました");
-  };
 
   const addOpt = (kind, v) => {
     setOpts((p) => { const next = { ...p, [kind]: [...new Set([...(p[kind] || []), v])] }; saveOpts(next); return next; });
@@ -2125,9 +1919,9 @@ export default function App({ user, onSignOut }) {
         )
           : open ? <Detail note={open} refs={refs} onBack={() => setOpen(null)} onDelete={del} onEdit={(n) => { setOpen(null); setEditing(n); window.scrollTo({ top: 0 }); }} />
             : tab === "new" ? <NewNote key="new" onSave={add} setToast={setToast} opts={opts} addOpt={addOpt} refs={refs} />
-            : tab === "book" ? <Notebook notes={notes} onOpen={setOpen} setToast={setToast} onSeed={seed} onClearSamples={clearSamples} />
-              : tab === "rev" ? <Review notes={notes} onOpen={(n) => setOpen(n)} onSeed={seed} />
-                : <RefList refs={refs} opts={opts} addOpt={addOpt} onSave={upsertRef} onDelete={removeRef} onSeed={seed} />}
+            : tab === "book" ? <Notebook notes={notes} onOpen={setOpen} setToast={setToast} refs={refs} />
+              : tab === "rev" ? <Review notes={notes} onOpen={(n) => setOpen(n)} />
+                : <RefList refs={refs} opts={opts} addOpt={addOpt} onSave={upsertRef} onDelete={removeRef} />}
 
       {toast && <div className="toast">{toast}</div>}
     </div>

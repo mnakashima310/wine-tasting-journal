@@ -170,6 +170,41 @@ APIキーは [console.anthropic.com](https://console.anthropic.com) で発行し
 
 ---
 
+## 模範回答を一括登録する
+
+画面から1件ずつ登録するほか、CSVからまとめて投入できます。
+
+**1. 自分の user_id を調べる**
+
+Supabase の SQL Editor で実行します。
+
+```sql
+select id, email from auth.users;
+```
+
+自分のメールアドレスの行にある `id`（UUID）を控えます。
+
+**2. CSV を用意する**
+
+`tools/refs-template.csv` をコピーして書き換えます。1行が1件の模範回答です。
+
+- `type` は `red` / `white` / `rose` / `orange` / `sparkling`
+- 複数の語を入れる欄は「、」で区切ります（例: `イチゴ、ラズベリー、スミレ`）
+- 使わない欄は空のままで構いません
+- Excelで編集する場合は **CSV UTF-8** 形式で保存してください
+
+**3. SQL に変換して実行**
+
+```bash
+python tools/import-refs.py refs.csv <控えたUUID> > refs.sql
+```
+
+生成された `refs.sql` の中身を SQL Editor に貼って Run。同じIDで再実行すると上書きされるので、修正して入れ直すこともできます。
+
+アプリを再読み込みすると、模範タブに反映されます。
+
+---
+
 ## 構成
 
 ```
@@ -184,6 +219,9 @@ supabase/
   functions/claude/    Claude APIプロキシ（手順8を使う場合）
 .github/workflows/
   keepalive.yml        週1回のキープアライブ
+tools/
+  import-refs.py       模範回答をCSVから一括登録するスクリプト
+  refs-template.csv    その書式サンプル
 build-app.py           プロトタイプ版から App.jsx を再生成するスクリプト
 ```
 
