@@ -26,9 +26,10 @@ const CSS = `
 .wn button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .wn input,.wn textarea{font-family:inherit}
 
-.hd{background:var(--wine);color:#fff;padding:15px 20px 14px;text-align:center;position:relative}
-.hd-out{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:600;color:rgba(255,255,255,.92);border:1px solid rgba(255,255,255,.5);border-radius:2px;padding:6px 10px}
-.hd h1{font-family:var(--serif);font-size:21px;letter-spacing:.13em;margin:0;font-weight:400;line-height:1.3}
+.hd{background:var(--wine);color:#fff;padding:15px 18px 14px;display:flex;align-items:center;gap:12px}
+.hd h1{flex:1;font-family:var(--serif);font-size:20px;letter-spacing:.1em;margin:0;font-weight:400;line-height:1.3}
+.hd-out{flex:none;display:flex;align-items:center;justify-content:center;width:38px;height:38px;color:#fff;border:1px solid rgba(255,255,255,.45);border-radius:2px}
+.hd-out:active{background:rgba(255,255,255,.14)}
 .tabs{display:flex;background:var(--paper);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
 .tab{flex:1;padding:15px 0 13px;font-size:14px;font-weight:600;letter-spacing:.14em;color:var(--sub);border-bottom:2px solid transparent;margin-bottom:-1px}
 .tab.on{color:var(--wine);border-bottom-color:var(--wine)}
@@ -484,7 +485,7 @@ const PAL_AXES = (t) => [
     o: t === "red" || t === "orange" ? ["スマートな", "骨格のしっかりした", "堅固な", "痩せた、渇いた", "豊満な", "ジューシーな", "力強い", "流れるような", "ふくよかな"]
       : ["スリムな", "スムーズな", "コンパクトな", "ドライな", "まろやかな", "ねっとりした", "ジューシーな", "豊潤な", "厚みのある", "抑制された"],
   },
-  { id: "alc", n: "アルコール", d: "喉と胃の奥に感じる温かさ。", o: ["控えめ", "やや軽い", "中程度", "やや強め", "強い"] },
+  { id: "alc", n: "アルコール", d: "喉と胃の奥に感じる温かさ。用語選択用紙の区分に合わせています。", o: ["10.9%以下", "11.0 - 11.9%", "12.0 - 12.9%", "13.0 - 13.9%", "14%以上"] },
 ];
 const FINISH = ["短い", "やや短い", "やや長い", "長い"];
 
@@ -1927,6 +1928,15 @@ export default function App({ user, onSignOut }) {
   useEffect(() => { Promise.all([loadNotes(), loadOpts(), loadRefs()]).then(([n, o, r]) => { setNotes(n); setOpts(o); setRefs(r); setReady(true); }); }, []);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(""), 2600); return () => clearTimeout(t); }, [toast]);
 
+  const upsertRef = async (r) => {
+    const next = refs.some((x) => x.id === r.id) ? refs.map((x) => (x.id === r.id ? r : x)) : [...refs, r];
+    setRefs(next); await saveRefs(next); setToast("模範回答を保存しました");
+  };
+  const removeRef = async (id) => {
+    const next = refs.filter((x) => x.id !== id);
+    setRefs(next); await saveRefs(next); setToast("模範回答を削除しました");
+  };
+
   const addOpt = (kind, v) => {
     setOpts((p) => { const next = { ...p, [kind]: [...new Set([...(p[kind] || []), v])] }; saveOpts(next); return next; });
   };
@@ -1952,7 +1962,11 @@ export default function App({ user, onSignOut }) {
       <style>{CSS}</style>
       <header className="hd">
         <h1>Wine Tasting Journal</h1>
-        <button className="hd-out" onClick={onSignOut} title={user?.email}>ログアウト</button>
+        <button className="hd-out" onClick={onSignOut} title={`${user?.email || ""} — ログアウト`} aria-label="ログアウト">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 4h3a1 1 0 011 1v14a1 1 0 01-1 1h-3" /><path d="M10 16l-4-4 4-4" /><path d="M6 12h9" />
+          </svg>
+        </button>
       </header>
 
       {!open && !editing && (

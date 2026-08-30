@@ -58,11 +58,16 @@ src = src.replace('export default function App() {', 'export default function Ap
 src = src.replace('      <header className="hd"><h1>Wine Tasting Journal</h1></header>',
 '''      <header className="hd">
         <h1>Wine Tasting Journal</h1>
-        <button className="hd-out" onClick={onSignOut} title={user?.email}>ログアウト</button>
+        <button className="hd-out" onClick={onSignOut} title={`${user?.email || ""} — ログアウト`} aria-label="ログアウト">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 4h3a1 1 0 011 1v14a1 1 0 01-1 1h-3" /><path d="M10 16l-4-4 4-4" /><path d="M6 12h9" />
+          </svg>
+        </button>
       </header>''')
-src = src.replace('.hd{background:var(--wine);color:#fff;padding:15px 20px 14px;text-align:center}',
-'''.hd{background:var(--wine);color:#fff;padding:15px 20px 14px;text-align:center;position:relative}
-.hd-out{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:600;color:rgba(255,255,255,.92);border:1px solid rgba(255,255,255,.5);border-radius:2px;padding:6px 10px}''')
+src = src.replace('.tabs{display:flex;background:var(--paper);',
+'''.hd-out{flex:none;display:flex;align-items:center;justify-content:center;width:38px;height:38px;color:#fff;border:1px solid rgba(255,255,255,.45);border-radius:2px}
+.hd-out:active{background:rgba(255,255,255,.14)}
+.tabs{display:flex;background:var(--paper);''')
 
 open('src/App.jsx', 'w').write(src)
 print('src/App.jsx を生成しました:', len(src.split('\n')), '行')
