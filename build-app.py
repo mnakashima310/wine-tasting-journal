@@ -5,7 +5,7 @@ src = src.replace('import * as XLSX from "xlsx";',
 '''import { supabase } from "./lib/supabase";
 import {
   loadNotes, saveNotes, savePhoto, loadPhoto, deletePhoto,
-  loadOpts, saveOpts, loadRefs, saveRefs,
+  loadOpts, saveOpts, loadRefs, saveRefs, loadTemplates,
 } from "./lib/store";
 
 /** Claude API（従量課金）を使うかどうか。.env の VITE_ENABLE_AI で切り替える */
@@ -52,6 +52,21 @@ src = src.replace('''            {!f.blind.done && (
                 <button className="assist"''','''            {AI && !f.blind.done && (
               <>
                 <button className="assist"''')
+
+# 模範回答の初期セットを戻せるようにする
+src = src.replace('  const upsertRef = async (r) => {', '''  const restoreRefs = async () => {
+    const tpl = await loadTemplates();
+    if (!tpl.length) { setToast("初期セットが見つかりませんでした"); return; }
+    const add = tpl.filter((t) => !refs.some((r) => r.id === t.id));
+    if (!add.length) { setToast("すでに全て入っています"); return; }
+    const next = [...refs, ...add];
+    setRefs(next); await saveRefs(next);
+    setToast(`初期セットから${add.length}件を戻しました`);
+  };
+
+  const upsertRef = async (r) => {''')
+src = src.replace('<RefList refs={refs} opts={opts} addOpt={addOpt} onSave={upsertRef} onDelete={removeRef} />',
+                  '<RefList refs={refs} opts={opts} addOpt={addOpt} onSave={upsertRef} onDelete={removeRef} onRestore={restoreRefs} />')
 
 # 認証まわり
 src = src.replace('export default function App() {', 'export default function App({ user, onSignOut }) {')

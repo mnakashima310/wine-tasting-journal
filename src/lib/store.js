@@ -144,3 +144,13 @@ export async function saveRefs(refs) {
   if (gone.length) await supabase.from("references").delete().in("id", gone);
   return true;
 }
+
+/* ---------------- 全ユーザー共通のテンプレート ---------------- */
+export async function loadTemplates() {
+  const { data, error } = await supabase
+    .from("reference_templates")
+    .select("data")
+    .order("sort", { ascending: true });
+  if (error) { console.error(error); return []; }
+  return (data || []).map((r) => r.data);
+}

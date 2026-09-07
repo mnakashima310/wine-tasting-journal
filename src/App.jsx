@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "./lib/supabase";
 import {
   loadNotes, saveNotes, savePhoto, loadPhoto, deletePhoto,
-  loadOpts, saveOpts, loadRefs, saveRefs,
+  loadOpts, saveOpts, loadRefs, saveRefs, loadTemplates,
 } from "./lib/store";
 
 /** Claude API（従量課金）を使うかどうか。.env の VITE_ENABLE_AI で切り替える */
@@ -167,6 +167,7 @@ textarea.inp{min-height:80px;resize:vertical;line-height:1.8;font-size:15px}
 .rv-tg{flex:1;display:flex;flex-wrap:wrap;gap:4px}
 .rv-tg i{font-style:normal;font-size:12.5px;padding:3px 8px;border-radius:2px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
 .rv-tg i.hit{background:var(--wine);border-color:var(--wine);color:#fff;font-weight:600}
+.restore{margin-top:20px;padding:13px 22px;background:var(--card);border:1px solid var(--wine);color:var(--wine);border-radius:2px;font-size:13.5px;font-weight:600;letter-spacing:.1em}
 .refcard{margin-bottom:9px}
 .refmemo{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:12.5px;line-height:1.8;color:var(--sub)}
 .savebar-row{display:flex;gap:9px}
@@ -1051,7 +1052,7 @@ function TypeTabs({ value, onChange, items }) {
 const kana = (a, b) => (a || "").localeCompare(b || "", "ja");
 
 /* ================= 模範回答タブ ================= */
-function RefList({ refs, opts, addOpt, onSave, onDelete }) {
+function RefList({ refs, opts, addOpt, onSave, onDelete, onRestore }) {
   const [editing, setEditing] = useState(null);
   const [viewing, setViewing] = useState(null);
   const [filter, setFilter] = useState("all");
@@ -1087,6 +1088,7 @@ function RefList({ refs, opts, addOpt, onSave, onDelete }) {
     <div>
       <div className="listbar">
         <span className="listbar-n">{refs.length}件の模範回答</span>
+        {onRestore && <button className="linkbtn" onClick={onRestore}>初期セットを戻す</button>}
         <button className="ibtn" onClick={() => setEditing(false)}>{Ico.plus}追加</button>
       </div>
 
@@ -1096,6 +1098,7 @@ function RefList({ refs, opts, addOpt, onSave, onDelete }) {
         <div className="empty">
           <div className="em-t">{refs.length ? "この種類の登録はありません" : "まだ模範回答がありません"}</div>
           <p>品種ごとの模範回答を登録しておくと、<br />ブラインドの答え合わせでいつでも参照できます。</p>
+          {onRestore && !refs.length && <button className="restore" onClick={onRestore}>初期セットを読み込む</button>}
         </div>
       ) : (
         <div style={{ paddingTop: 10 }}>
@@ -1928,6 +1931,16 @@ export default function App({ user, onSignOut }) {
   useEffect(() => { Promise.all([loadNotes(), loadOpts(), loadRefs()]).then(([n, o, r]) => { setNotes(n); setOpts(o); setRefs(r); setReady(true); }); }, []);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(""), 2600); return () => clearTimeout(t); }, [toast]);
 
+  const restoreRefs = async () => {
+    const tpl = await loadTemplates();
+    if (!tpl.length) { setToast("初期セットが見つかりませんでした"); return; }
+    const add = tpl.filter((t) => !refs.some((r) => r.id === t.id));
+    if (!add.length) { setToast("すでに全て入っています"); return; }
+    const next = [...refs, ...add];
+    setRefs(next); await saveRefs(next);
+    setToast(`初期セットから${add.length}件を戻しました`);
+  };
+
   const upsertRef = async (r) => {
     const next = refs.some((x) => x.id === r.id) ? refs.map((x) => (x.id === r.id ? r : x)) : [...refs, r];
     setRefs(next); await saveRefs(next); setToast("模範回答を保存しました");
@@ -1990,7 +2003,7 @@ export default function App({ user, onSignOut }) {
             : tab === "new" ? <NewNote key="new" onSave={add} setToast={setToast} opts={opts} addOpt={addOpt} refs={refs} />
             : tab === "book" ? <Notebook notes={notes} onOpen={setOpen} setToast={setToast} refs={refs} />
               : tab === "rev" ? <Review notes={notes} onOpen={(n) => setOpen(n)} />
-                : <RefList refs={refs} opts={opts} addOpt={addOpt} onSave={upsertRef} onDelete={removeRef} />}
+                : <RefList refs={refs} opts={opts} addOpt={addOpt} onSave={upsertRef} onDelete={removeRef} onRestore={restoreRefs} />}
 
       {toast && <div className="toast">{toast}</div>}
     </div>

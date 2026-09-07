@@ -170,7 +170,22 @@ APIキーは [console.anthropic.com](https://console.anthropic.com) で発行し
 
 ---
 
-## 模範回答を一括登録する
+## 模範回答を全員に配る
+
+`tools/templates.sql` を SQL Editor で実行すると、
+
+- `reference_templates` テーブルが作られ、白9件・赤14件が入ります
+- 以降、**新しく登録したユーザーには自動でこの23件がコピーされます**
+- すでに登録済みで模範回答を1件も持っていない人にも、その場で配られます
+
+コピーされたあとは各自のデータなので、編集も削除も自由です。誰かが消しても他の人には影響しません。消したあとで戻したくなったら、模範タブの「初期セットを戻す」から読み込めます。
+
+配る内容を変えたいときは、`tools/refs-white-sample.csv` / `refs-red-sample.csv` を編集し、
+`python tools/make-templates.py 白.csv 赤.csv > templates.sql` で作り直して実行し直してください。
+
+---
+
+## 模範回答を一括登録する（自分のアカウントだけ）
 
 画面から1件ずつ登録するほか、CSVからまとめて投入できます。
 
