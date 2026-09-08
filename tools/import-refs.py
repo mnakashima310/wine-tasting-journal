@@ -14,7 +14,7 @@ CSV から Supabase の references テーブルに流し込む INSERT 文を作�
 
 CSV の書式（1行目はヘッダー、区切りはカンマ）:
   type,grape,country,region,memo,清澄度,輝き,色調,濃淡,粘性,外観の印象,
-  第一印象,第一アロマ,第二アロマ,第三アロマ,香りの印象,
+  第一印象,果実・花・植物,香辛料・芳香・化学物質,香りの印象,
   アタック,甘み,酸味,タンニン分,苦味,バランス,アルコール,余韻,評価,適正温度,グラス
 
   - type は red / white / rose / orange / sparkling
@@ -35,8 +35,8 @@ APP = {"清澄度": "clarity", "輝き": "shine", "色調": "hue",
 PAL = {"アタック": "attack", "甘み": "sweet", "酸味": "acid",
        "タンニン分": "tannin", "苦味": "bitter", "バランス": "balance",
        "アルコール": "alc"}
-AROMA = {"第一印象": "aromaImp", "第一アロマ": "aroma1", "第二アロマ": "aroma2",
-         "第三アロマ": "aroma3", "香りの印象": "aromaAfter"}
+AROMA = {"第一印象": "aromaImp", "果実・花・植物": "aroma1",
+         "香辛料・芳香・化学物質": "aroma2", "香りの印象": "aromaAfter"}
 OTHER = {"評価": "eval", "適正温度": "temp", "グラス": "glass"}
 
 

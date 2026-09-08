@@ -26,13 +26,13 @@ const CSS = `
 .wn button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .wn input,.wn textarea{font-family:inherit}
 
-.hd{background:var(--wine);color:#fff;padding:15px 18px 14px;display:flex;align-items:center;gap:12px}
+.hd{background:var(--wine);color:#fff;padding:calc(15px + env(safe-area-inset-top)) 18px 14px;display:flex;align-items:center;gap:12px}
 .hd h1{flex:1;font-family:var(--serif);font-size:20px;letter-spacing:.1em;margin:0;font-weight:400;line-height:1.3}
 .hd-out{flex:none;display:flex;align-items:center;justify-content:center;width:38px;height:38px;color:#fff;border:1px solid rgba(255,255,255,.45);border-radius:2px}
 .hd-out:active{background:rgba(255,255,255,.14)}
-.tabs{display:flex;background:var(--paper);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+.tabs{display:flex;background:var(--paper);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;padding-top:env(safe-area-inset-top)}
 .tab{flex:1;padding:15px 0 13px;font-size:14px;font-weight:600;letter-spacing:.14em;color:var(--sub);border-bottom:2px solid transparent;margin-bottom:-1px}
-.tab.on{color:var(--wine);border-bottom-color:var(--wine)}
+.tab.on{color:var(--wine);font-weight:600;border-bottom-color:var(--wine);background:var(--paper)}
 .tab-n{display:inline-block;margin-left:8px;min-width:22px;padding:2px 7px;border-radius:11px;background:var(--sand);color:var(--sub);font-size:11.5px;font-weight:600;letter-spacing:0;vertical-align:1px;font-family:var(--mono)}
 .tab.on .tab-n{background:var(--wine);color:#fff}
 .segs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
@@ -53,6 +53,8 @@ const CSS = `
 .fld{margin-bottom:14px}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .lab{display:block;font-size:12.5px;font-weight:600;color:var(--sub);margin-bottom:6px}
+.req{color:#C0392B;font-weight:600;margin-left:2px}
+.savehint{font-size:12px;color:var(--sub);text-align:center;margin-top:8px}
 .inp{width:100%;padding:11px 12px;background:var(--card);border:1px solid var(--line);border-radius:2px;font-size:16px;color:var(--ink);line-height:1.5}
 .inp::placeholder{color:#8C837D}
 .inp:focus{outline:2px solid var(--wine);outline-offset:-1px}
@@ -336,7 +338,7 @@ const AROMA_IMP = (t) => t === "red"
   ? ["若々しい", "嫌気的な", "熟成感が現れている", "酸化熟成の段階にある", "酸化した", "第1アロマが強い", "第2アロマが強い", "ニュートラル", "木樽からのニュアンス"]
   : ["若々しい", "嫌気的な", "熟成感が現れている", "酸化熟成の段階にある", "成熟度が高い", "第1アロマが強い", "第2アロマが強い", "ニュートラル", "木樽からのニュアンス"];
 
-/* 第一アロマ：ブドウ品種に由来する香り */
+/* 果実・花・植物（用語選択用紙の分類） */
 const A1 = {
   white: [
     { cat: "果実", color: "#D6B12C", w: [
@@ -352,7 +354,8 @@ const A1 = {
       ["パッションフルーツ", "飛び出すような強い香りと酸。青さを伴えば冷涼、甘さが勝てば温暖と読めます。"],
       ["バナナ", "熟したバナナ。低温発酵に由来することも多く、若く軽い白に出ます。"],
       ["マンゴー", "厚みのあるこってりした果実。アルコールが高くボディの強い白に合います。"],
-      ["ライチ", "香水のように華やかで独特。ほぼ特定品種に限られ、当てる決め手になります。"]] },
+      ["ライチ", "香水のように華やかで独特。ほぼ特定品種に限られ、当てる決め手になります。"],
+    ] },
     { cat: "花・植物", color: "#5F8C4E", w: [
       ["スイカズラ", "みずみずしく青みのある白い花。若く酸の高い白で柑橘と一緒に立ちます。"],
       ["アカシア", "はちみつを思わせるやさしい花。軽く甘い印象の白や、少し熟成した白に。"],
@@ -364,18 +367,15 @@ const A1 = {
       ["アニス", "八角のような甘く涼しい種子の香り。南仏など日照のある白に現れます。"],
       ["ヴェルヴェーヌ", "レモンバーベナ。柑橘と草の中間で、若く軽やかな白の清涼感を表せます。"],
       ["ハーブ", "乾いた薬草の複合的な青み。地中海沿いの白で、乾いた日なたの印象と結びつきます。"],
-      ["タイム", "細く硬い香草。乾いた土地の白で、ハーブより輪郭のはっきりした青みです。"]] },
-    { cat: "鉱物・スパイス", color: "#5E6E7A", w: [
-      ["石灰", "チョークのような白い硬さ。冷涼で酸の高い白の、骨っぽい質感を表します。"],
-      ["火打石", "石を打ち合わせた瞬間の硬い香り。痩せた土壌の白に出て、高い酸と結びつきます。"],
-      ["貝殻", "潮っぽい乾いた塩気。海沿いや石灰質の産地の白で、余韻に塩味を感じたときに。"],
-      ["鉱物", "特定できない金属的・石的な硬さ。ミネラリーという印象を具体化する言葉です。"],
-      ["海の香り", "磯や潮風のニュアンス。海に面した産地の白や、熟成した白で顔を出します。"],
-      ["白胡椒", "ピリッと軽いスパイス感。白では香りの端に出て、複雑さの合図になります。"],
-      ["コリアンダーシード", "柑橘に似た乾いた種子の香り。香りの層が厚い白の、仕上げの一言です。"]] },
+      ["タイム", "細く硬い香草。乾いた土地の白で、ハーブより輪郭のはっきりした青みです。"],
+    ] },
+    { cat: "木の実", color: "#8A6A3D", w: [
+      ["ヘーゼルナッツ", "乾いた木の実の香ばしさ。樽熟成か、瓶で数年経った白の酸化的な表情。"],
+      ["フレッシュ・アーモンド", "生の木の実の青い香ばしさ。後半のほろ苦さを旨みとして表せます。"],
+    ] },
   ],
   red: [
-    { cat: "赤い果実", color: "#C0395E", w: [
+    { cat: "果実", color: "#C0395E", w: [
       ["イチゴ", "明るく軽やかな赤い果実。色が淡くタンニンの軽い赤で最初に出てきます。"],
       ["ラズベリー", "イチゴより酸が立つ果実。冷涼産地の軽〜中程度の赤で、高い酸とセットで。"],
       ["ブルーベリー", "丸く穏やかな黒い果実。タンニンがなめらかで酸が穏やかな赤に合います。"],
@@ -383,12 +383,15 @@ const A1 = {
       ["ブラックベリー", "カシスより甘く種っぽい厚み。日照の強い産地の、色の濃い赤に。"],
       ["ブラックチェリー", "濃厚で甘い黒さくらんぼ。ボディが強くアルコールの高い赤で厚みを表せます。"],
       ["干しプラム", "水分が抜けた凝縮した甘さ。暖かい産地か、熟成が進んだ赤の証拠です。"],
-      ["乾燥イチジク", "ねっとり甘く粒感のある果実。アルコールが高く、甘さすら感じる赤に。"]] },
-    { cat: "花・植物", color: "#8A5BA8", w: [
+      ["乾燥イチジク", "ねっとり甘く粒感のある果実。アルコールが高く、甘さすら感じる赤に。"],
+    ] },
+    { cat: "花", color: "#8A5BA8", w: [
       ["バラ", "華やかで甘い香水のような花。タンニンが繊細で色の淡い赤に多く現れます。"],
       ["スミレ", "ひんやり上品な青みのある花。冷涼産地の赤で、出れば品種を絞り込めます。"],
       ["牡丹", "厚みのあるしっとりした花。中程度以上のボディの赤で、バラより落ち着いた印象。"],
       ["ゼラニウム", "青く薬草めいた花。強く出ると欠陥のこともあり、慎重に使う言葉です。"],
+    ] },
+    { cat: "植物", color: "#4F7A42", w: [
       ["ピーマン", "生の青野菜の硬い香り。欠点ではなく品種と冷涼さの印で、青いタンニンと同居。"],
       ["メントール", "スーッと抜ける冷たい清涼感。濃い果実と同居すれば標高の高さを示します。"],
       ["シダ", "湿った緑の下草。熟成が進み、果実が引いてきた赤で出てきます。"],
@@ -398,75 +401,81 @@ const A1 = {
       ["ドライハーブ", "乾いた香草の束。日照のある産地や、熟成した赤の乾いた印象に。"],
       ["ユーカリ", "清涼な樹木。標高の高い産地や特定の新世界の赤の目印になります。"],
       ["トマト", "青い茎とトマトの酸。イタリア系の赤で、酸が高く旨みのあるときに。"],
-      ["黒オリーブ", "塩気と旨みのある黒い果実。地中海の赤で、しょっぱさを感じたときに使えます。"]] },
-    { cat: "スパイス", color: "#B4622A", w: [
-      ["黒胡椒", "挽きたての刺すような香り。品種由来のスパイス感で、涼しめの産地の赤に多い。"],
-      ["甘草", "黒飴のようなねっとり甘い薬草。凝縮した濃い赤や、熟成した赤の余韻に残ります。"]] },
-  ],
-};
-
-/* 第二アロマ：発酵に由来する香り */
-const A2 = {
-  white: [
-    { cat: "発酵・酵母", color: "#B8A06A", w: [
-      ["パン・ドゥ・ミ", "焼く前後のパンのような酵母香。澱と長く置いた白や泡ものに出ます。"],
-      ["ジンジャーブレッド", "香辛料入りの焼き菓子。酵母と樽が重なった、厚みのある白に。"],
-      ["乳製品", "バターやヨーグルトの香り。乳酸発酵の証で、丸い口当たりと結びつきます。"]] },
-    { cat: "醸造由来", color: "#9AA394", w: [
-      ["硫黄", "マッチを擦ったような還元的な香り。抜栓直後に出て、時間で消えることが多い。"],
-      ["フェノール", "薬品や絆創膏のような香り。強すぎる場合は欠陥を疑う手がかりになります。"]] },
-  ],
-  red: [
-    { cat: "発酵・醸造", color: "#B8A06A", w: [
-      ["生肉", "血や生肉を思わせる還元的な香り。抜栓直後の若い赤で出ることがあります。"],
-      ["鉄分", "金属的で血に近い香り。旨みのある赤や、還元的な性格の赤に現れます。"]] },
-  ],
-};
-
-/* 第三アロマ：樽と熟成に由来する香り */
-const A3 = {
-  white: [
-    { cat: "樽・ナッツ", color: "#8A6A3D", w: [
-      ["トースト", "パンを焼いた焦げの香ばしさ。樽の焼きが強い白で、余韻に残ります。"],
-      ["ヴァニラ", "甘く丸い香り。新樽で寝かせた白の証で、厚いボディと一緒に現れます。"],
-      ["ヘーゼルナッツ", "乾いた木の実の香ばしさ。樽熟成か、瓶で数年経った白の酸化的な表情。"],
-      ["フレッシュ・アーモンド", "生の木の実の青い香ばしさ。後半のほろ苦さを旨みとして表せます。"],
-      ["煙・燻製", "焚き火の遠くの煙。樽か土地の個性で、硬質な白に複雑さを与えます。"],
-      ["シナモン", "甘く温かい木の皮。樽と熟成の両方から出て、果実の甘さを補強します。"],
-      ["丁子", "薬っぽく濃く甘いスパイス。樽の効いた厚みのある白で複雑さを示します。"],
-      ["香木", "白檀のような乾いた高貴な木。長く樽で寝かせた白にまれに現れます。"]] },
-    { cat: "熟成", color: "#6E7A66", w: [
-      ["蜂蜜", "とろりと重い甘い香り。数年以上熟成した白や甘口で、色の濃さと一致します。"],
-      ["花の蜜", "蜂蜜より軽く花寄りの甘さ。熟成の入り口にある白で感じられます。"],
-      ["麝香", "動物的で濃厚な残り香。熟成が進んだ白の、独特の重さを表す言葉です。"],
-      ["ペトロール（ケロセン）", "石油様の香り。特定品種が数年熟成した確かな証で、当てる決め手になります。"],
-      ["ワックス", "ロウのような乾いた被膜の香り。長熟した厚みのある白に出ます。"],
-      ["蜜蝋", "蜜と蝋が混ざった甘く乾いた香り。熟成した白の丸みと結びつきます。"]] },
-  ],
-  red: [
-    { cat: "樽", color: "#8A6A3D", w: [
-      ["ヴァニラ", "甘く丸い香り。新樽を使った赤の証で、タンニンに甘い印象を与えます。"],
-      ["ロースト", "深く焼いた木の焦げ感。焼きの強い樽を使った、色も味も濃い赤に。"],
-      ["コーヒー", "深煎り豆の香ばしい苦み。樽由来で、力強いタンニンの赤の定番表現です。"],
-      ["チョコレート", "カカオの乾いた苦みと甘さ。凝縮した果実と強いタンニンの赤に添えられます。"],
-      ["丁子", "薬っぽく濃く甘いスパイス。樽の効いた重い赤で、複雑さを示します。"],
-      ["シナモン", "甘く温かい木の皮のスパイス。果実の甘い印象を補強します。"],
-      ["ナツメグ", "ほろ苦く粉っぽいスパイス。香りの層が厚い赤の、仕上げの一言です。"],
-      ["グリエ", "肉や網焼きの香ばしさ。樽の焼きと熟成が重なった重厚な赤に。"],
-      ["煙・燻製", "焚き火の煙。樽か土地の個性で、乾いた印象を赤に与えます。"],
-      ["樹脂", "松脂のような粘る樹木の香り。樽と熟成が進んだ赤にまれに現れます。"]] },
-    { cat: "熟成・動物", color: "#5E6E7A", w: [
-      ["なめし皮", "古い革の乾いた動物香。10年前後の熟成の証で、タンニンが溶けた赤に。"],
-      ["乾いた肉", "生ハムのような塩気と旨み。熟成した赤の、果実以外の厚みを表します。"],
-      ["動物的なニュアンス", "獣や毛皮を思わせる香り。熟成と還元的な性格が重なった赤に出ます。"],
+      ["黒オリーブ", "塩気と旨みのある黒い果実。地中海の赤で、しょっぱさを感じたときに使えます。"],
+    ] },
+    { cat: "熟成の植物香", color: "#7A6A4A", w: [
       ["タバコ", "乾いた葉巻の葉。樽と熟成が重なった赤で、甘さのない乾いた印象を表せます。"],
       ["紅茶", "乾いた茶葉のやさしい渋み。色が淡く枯れてきた赤の美しさを表します。"],
       ["キノコ", "しっとりした土っぽさ。長期熟成した淡い色の赤で、繊細さと共に。"],
       ["スーボア", "下草。湿った森の落ち葉と土の香りで、熟成後半の赤の代表語です。"],
       ["トリュフ", "キノコより濃く高貴な土の香り。長熟した上質な赤で出会う褒め言葉。"],
       ["土", "掘り返した畑のような素朴な乾き。果実が引いた後に顔を出します。"],
+    ] },
+  ],
+};
+
+/* 香辛料・芳香・化学物質（用語選択用紙の分類） */
+const A2 = {
+  white: [
+    { cat: "鉱物", color: "#5E6E7A", w: [
+      ["石灰", "チョークのような白い硬さ。冷涼で酸の高い白の、骨っぽい質感を表します。"],
+      ["火打石", "石を打ち合わせた瞬間の硬い香り。痩せた土壌の白に出て、高い酸と結びつきます。"],
+      ["貝殻", "潮っぽい乾いた塩気。海沿いや石灰質の産地の白で、余韻に塩味を感じたときに。"],
+      ["鉱物", "特定できない金属的・石的な硬さ。ミネラリーという印象を具体化する言葉です。"],
+      ["海の香り", "磯や潮風のニュアンス。海に面した産地の白や、熟成した白で顔を出します。"],
+    ] },
+    { cat: "香辛料", color: "#B4622A", w: [
+      ["白胡椒", "ピリッと軽いスパイス感。白では香りの端に出て、複雑さの合図になります。"],
+      ["コリアンダーシード", "柑橘に似た乾いた種子の香り。香りの層が厚い白の、仕上げの一言です。"],
+      ["シナモン", "甘く温かい木の皮。樽と熟成の両方から出て、果実の甘さを補強します。"],
+      ["丁子", "薬っぽく濃く甘いスパイス。樽の効いた厚みのある白で複雑さを示します。"],
+      ["香木", "白檀のような乾いた高貴な木。長く樽で寝かせた白にまれに現れます。"],
+    ] },
+    { cat: "発酵・樽", color: "#B8A06A", w: [
+      ["パン・ドゥ・ミ", "焼く前後のパンのような酵母香。澱と長く置いた白や泡ものに出ます。"],
+      ["トースト", "パンを焼いた焦げの香ばしさ。樽の焼きが強い白で、余韻に残ります。"],
+      ["ジンジャーブレッド", "香辛料入りの焼き菓子。酵母と樽が重なった、厚みのある白に。"],
+      ["煙・燻製", "焚き火の遠くの煙。樽か土地の個性で、硬質な白に複雑さを与えます。"],
+      ["ヴァニラ", "甘く丸い香り。新樽で寝かせた白の証で、厚いボディと一緒に現れます。"],
+      ["乳製品", "バターやヨーグルトの香り。乳酸発酵の証で、丸い口当たりと結びつきます。"],
+    ] },
+    { cat: "熟成・その他", color: "#6E7A66", w: [
+      ["蜂蜜", "とろりと重い甘い香り。数年以上熟成した白や甘口で、色の濃さと一致します。"],
+      ["花の蜜", "蜂蜜より軽く花寄りの甘さ。熟成の入り口にある白で感じられます。"],
+      ["麝香", "動物的で濃厚な残り香。熟成が進んだ白の、独特の重さを表す言葉です。"],
+      ["ペトロール（ケロセン）", "石油様の香り。特定品種が数年熟成した確かな証で、当てる決め手になります。"],
+      ["ワックス", "ロウのような乾いた被膜の香り。長熟した厚みのある白に出ます。"],
+      ["蜜蝋", "蜜と蝋が混ざった甘く乾いた香り。熟成した白の丸みと結びつきます。"],
+      ["硫黄", "マッチを擦ったような還元的な香り。抜栓直後に出て、時間で消えることが多い。"],
+      ["フェノール", "薬品や絆創膏のような香り。強すぎる場合は欠陥を疑う手がかりになります。"],
+    ] },
+  ],
+  red: [
+    { cat: "香辛料", color: "#B4622A", w: [
+      ["黒胡椒", "挽きたての刺すような香り。品種由来のスパイス感で、涼しめの産地の赤に多い。"],
+      ["丁子", "薬っぽく濃く甘いスパイス。樽の効いた重い赤で、複雑さを示します。"],
+      ["シナモン", "甘く温かい木の皮のスパイス。果実の甘い印象を補強します。"],
+      ["ナツメグ", "ほろ苦く粉っぽいスパイス。香りの層が厚い赤の、仕上げの一言です。"],
+      ["甘草", "黒飴のようなねっとり甘い薬草。凝縮した濃い赤や、熟成した赤の余韻に残ります。"],
+    ] },
+    { cat: "樽", color: "#8A6A3D", w: [
+      ["ヴァニラ", "甘く丸い香り。新樽を使った赤の証で、タンニンに甘い印象を与えます。"],
+      ["ロースト", "深く焼いた木の焦げ感。焼きの強い樽を使った、色も味も濃い赤に。"],
+      ["グリエ", "肉や網焼きの香ばしさ。樽の焼きと熟成が重なった重厚な赤に。"],
+      ["煙・燻製", "焚き火の煙。樽か土地の個性で、乾いた印象を赤に与えます。"],
+      ["樹脂", "松脂のような粘る樹木の香り。樽と熟成が進んだ赤にまれに現れます。"],
+      ["コーヒー", "深煎り豆の香ばしい苦み。樽由来で、力強いタンニンの赤の定番表現です。"],
+      ["チョコレート", "カカオの乾いた苦みと甘さ。凝縮した果実と強いタンニンの赤に添えられます。"],
+    ] },
+    { cat: "動物・熟成", color: "#5E6E7A", w: [
+      ["生肉", "血や生肉を思わせる還元的な香り。抜栓直後の若い赤で出ることがあります。"],
+      ["乾いた肉", "生ハムのような塩気と旨み。熟成した赤の、果実以外の厚みを表します。"],
+      ["なめし皮", "古い革の乾いた動物香。10年前後の熟成の証で、タンニンが溶けた赤に。"],
+      ["動物的なニュアンス", "獣や毛皮を思わせる香り。熟成と還元的な性格が重なった赤に出ます。"],
+      ["鉄分", "金属的で血に近い香り。旨みのある赤や、還元的な性格の赤に現れます。"],
       ["ヨード", "磯や薬品を思わせる香り。海沿いの産地や熟成した赤に現れます。"],
-      ["ランシオ", "酸化熟成による独特のこもった甘い香り。長期熟成や酒精強化の赤に。"]] },
+      ["ランシオ", "酸化熟成による独特のこもった甘い香り。長期熟成や酒精強化の赤に。"],
+    ] },
   ],
 };
 
@@ -509,16 +518,15 @@ const OTHER_AXES = (t) => [
 /* ロゼ・オレンジ・泡は用語選択用紙に無いため、赤白の用語を組み合わせて構成する */
 const pick = (grp, words) => ({ ...grp, w: grp.w.filter(([w]) => words.includes(w)) });
 A1.rose = [pick(A1.red[0], ["イチゴ", "ラズベリー", "ブルーベリー", "カシス"]), ...A1.white];
-A1.orange = [...A1.white, pick(A1.red[1], ["ドライハーブ", "ローリエ"])];
+A1.orange = [...A1.white, pick(A1.red[3], ["紅茶", "土", "キノコ"])];
 A1.sparkling = A1.white;
-A2.rose = A2.white; A2.orange = A2.white; A2.sparkling = A2.white;
-A3.rose = A3.white;
-A3.orange = [...A3.white, pick(A3.red[1], ["紅茶", "土", "キノコ", "なめし皮"])];
-A3.sparkling = A3.white;
+A2.rose = A2.white;
+A2.orange = [...A2.white, pick(A2.red[2], ["なめし皮"])];
+A2.sparkling = A2.white;
 
 
 const WORD_INDEX = {};
-[A1, A2, A3].forEach((set, gi) => Object.keys(set).forEach((t) =>
+[A1, A2].forEach((set, gi) => Object.keys(set).forEach((t) =>
   set[t].forEach((g) => g.w.forEach(([w, m]) => { WORD_INDEX[`${t}:${w}`] = { w, m, cat: g.cat, color: g.color, grp: gi + 1 }; }))
 ));
 const wordMeta = (w, t) => WORD_INDEX[`${t}:${w}`] || WORD_INDEX[`red:${w}`] || WORD_INDEX[`white:${w}`] || { w, m: "自分で書き加えた言葉です。", cat: "自作", color: "#8E9689" };
@@ -577,6 +585,9 @@ const Ico = {
   download: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v11" /><path d="M8 11l4 4 4-4" /><path d="M5 19h14" /></svg>,
   trash: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7h16" /><path d="M9.5 7V4.5h5V7" /><path d="M6.5 7l1 12.5h9L17.5 7" /></svg>,
 };
+
+/** 必須項目の印 */
+const Req = () => <span className="req" aria-label="必須">＊</span>;
 
 /* ================= 共通UI ================= */
 function Toggle({ on, onChange, title, desc }) {
@@ -758,7 +769,7 @@ function Accordion({ title, count, children }) {
 /* ================= 模範回答 ================= */
 const emptyRef = () => ({
   id: "", grape: "", type: "red", country: "", region: "",
-  appearance: {}, aromaImp: [], aroma1: [], aroma2: [], aroma3: [], aromaAfter: [],
+  appearance: {}, aromaImp: [], aroma1: [], aroma2: [], aromaAfter: [],
   palate: {}, finish: "", other: {}, memo: "",
 });
 
@@ -766,12 +777,12 @@ const emptyRef = () => ({
 function RefEditor({ initial, opts, addOpt, onSave, onCancel }) {
   const [r, setR] = useState(() => {
     const base = emptyRef();
-    const src = initial || {};
+    const src = migrateAroma(initial || {});
     return {
       ...base, ...src,
       appearance: src.appearance || {}, palate: src.palate || {}, other: src.other || {},
       aromaImp: src.aromaImp || [], aromaAfter: src.aromaAfter || [],
-      aroma1: src.aroma1 || [], aroma2: src.aroma2 || [], aroma3: src.aroma3 || [],
+      aroma1: src.aroma1 || [], aroma2: src.aroma2 || [],
     };
   });
   const [focus, setFocus] = useState({ k: null, w: null });
@@ -817,7 +828,7 @@ function RefEditor({ initial, opts, addOpt, onSave, onCancel }) {
         <div className="step-hd"><span className="step-t">香り</span></div>
         <OptionAxis ax={{ n: "第一印象", o: FIRST_IMP(t) }} sel={r.aromaImp} onToggle={(v) => toggle("aromaImp", null, v)}
           extra={ok(`imp:${t}`)} onAddOption={addO(`imp:${t}`)} />
-        {[["aroma1", "第一アロマ", A1], ["aroma2", "第二アロマ", A2], ["aroma3", "第三アロマ", A3]].map(([key, label, DATA]) => (
+        {[["aroma1", "果実・花・植物", A1], ["aroma2", "香辛料・芳香・化学物質", A2]].map(([key, label, DATA]) => (
           <div className="ax" key={key}>
             <div className="ax-h"><span className="ax-n">{label}</span>{r[key].length > 0 && <span className="ax-cnt">{r[key].length}</span>}</div>
             <TagGroups groups={DATA[t]} picked={r[key]} onTap={(w) => { setFocus({ k: key, w }); toggle(key, null, w); }}
@@ -909,9 +920,8 @@ function SensoryTable({ note, truth, model }) {
 
       <div className="grp-t">香り</div>
       <CmpRow label="第一印象" mine={note.aromaImp} truth={pick(truth, "aromaImp")} model={pick(model, "aromaImp")} />
-      <CmpRow label="第一アロマ" mine={note.aroma1} truth={pick(truth, "aroma1")} model={pick(model, "aroma1")} />
-      <CmpRow label="第二アロマ" mine={note.aroma2} truth={pick(truth, "aroma2")} model={pick(model, "aroma2")} />
-      <CmpRow label="第三アロマ" mine={note.aroma3} truth={pick(truth, "aroma3")} model={pick(model, "aroma3")} />
+      <CmpRow label="果実・花・植物" mine={note.aroma1} truth={pick(truth, "aroma1")} model={pick(model, "aroma1")} />
+      <CmpRow label="香辛料・芳香・化学物質" mine={note.aroma2} truth={pick(truth, "aroma2")} model={pick(model, "aroma2")} />
       <CmpRow label="香りの印象" mine={note.aromaAfter} truth={pick(truth, "aromaAfter")} model={pick(model, "aromaAfter")} />
 
       <div className="grp-t">味わい</div>
@@ -956,9 +966,8 @@ function RefView({ r, mine }) {
       {APP_AXES(t).map((ax) => line(ax.n, r.appearance?.[ax.id]))}
       <div className="grp-t">香り</div>
       {line("第一印象", r.aromaImp)}
-      {line("第一アロマ", r.aroma1)}
-      {line("第二アロマ", r.aroma2)}
-      {line("第三アロマ", r.aroma3)}
+      {line("果実・花・植物", r.aroma1)}
+      {line("香辛料・芳香・化学物質", r.aroma2)}
       {line("香りの印象", r.aromaAfter)}
       <div className="grp-t">味わい</div>
       {PAL_AXES(t).map((ax) => line(ax.n, r.palate?.[ax.id]))}
@@ -1113,7 +1122,7 @@ function RefList({ refs, opts, addOpt, onSave, onDelete, onRestore }) {
                 <button className="ibtn danger" onClick={() => { if (confirm(`${r.grape} の模範回答を削除しますか?`)) onDelete(r.id); }}>{Ico.trash}</button>
               </div>
               <div className="card-w">
-                {[...(r.aroma1 || []), ...(r.aroma3 || [])].slice(0, 6).map((w) => (
+                {[...(r.aroma1 || []), ...(r.aroma2 || [])].slice(0, 6).map((w) => (
                   <span key={w} className="mini" style={{ background: wordMeta(w, r.type).color }}>{w}</span>
                 ))}
               </div>
@@ -1136,8 +1145,7 @@ function buildComment(n) {
   if (n.aromaImp?.length) p.push(`香りは${n.aromaImp.join("、")}。`);
   const ar = [];
   if (n.aroma1?.length) ar.push(n.aroma1.join("、"));
-  if (n.aroma2?.length) ar.push(`発酵由来の${n.aroma2.join("、")}`);
-  if (n.aroma3?.length) ar.push(`熟成による${n.aroma3.join("、")}`);
+  if (n.aroma2?.length) ar.push(n.aroma2.join("、"));
   if (ar.length) p.push(`${ar.join("、続いて")}。`);
   if (n.aromaAfter?.length) p.push(`香りの印象は${n.aromaAfter.join("、")}。`);
   const pl = [];
@@ -1148,8 +1156,22 @@ function buildComment(n) {
   return p.join("");
 }
 
+/** 旧バージョンの記録・模範回答を、用語選択用紙の2分類に移し替える */
+const GROUP_OF = {};
+[["aroma1", A1], ["aroma2", A2]].forEach(([key, set]) =>
+  Object.keys(set).forEach((t) => set[t].forEach((g) => g.w.forEach(([w]) => { GROUP_OF[w] = key; })))
+);
+function migrateAroma(o) {
+  if (!o || (!o.aroma3?.length && o.aroma3 !== undefined && !o.aroma3)) { /* fallthrough */ }
+  const all = [...(o?.aroma1 || []), ...(o?.aroma2 || []), ...(o?.aroma3 || [])];
+  if (!all.length) return o;
+  const a1 = [], a2 = [];
+  all.forEach((w) => (GROUP_OF[w] === "aroma2" ? a2 : a1).push(w));
+  return { ...o, aroma1: [...new Set(a1)], aroma2: [...new Set(a2)], aroma3: undefined };
+}
+
 /* ================= 記録フォーム ================= */
-const emptySensory = () => ({ appearance: {}, aromaImp: [], aromaAfter: [], aroma1: [], aroma2: [], aroma3: [], palate: {}, finish: "", other: {} });
+const emptySensory = () => ({ appearance: {}, aromaImp: [], aromaAfter: [], aroma1: [], aroma2: [], palate: {}, finish: "", other: {} });
 const emptyForm = () => ({
   name: "", producer: "", country: "", region: "", grape: "", vintage: "", alcohol: "",
   type: "red", ...emptySensory(), appearanceMemo: "", aromaMemo: "", palateMemo: "",
@@ -1163,13 +1185,15 @@ function NewNote({ onSave, setToast, opts, addOpt, initial, onCancel, refs }) {
   const [f, setF] = useState(() => {
     if (!initial) return emptyForm();
     const base = emptyForm();
+    const src = migrateAroma(initial);
     return {
-      ...base, ...initial,
-      type: initial.type || "red",
-      appearance: initial.appearance || {}, palate: initial.palate || {}, other: initial.other || {},
-      aromaImp: initial.aromaImp || [], aromaAfter: initial.aromaAfter || [], aroma1: initial.aroma1 || [], aroma2: initial.aroma2 || [], aroma3: initial.aroma3 || [],
-      blind: { ...base.blind, ...(initial.blind || {}), done: !!initial.blind?.on },
-      truth: { ...base.truth, ...(initial.truth || {}) },
+      ...base, ...src,
+      type: src.type || "red",
+      appearance: src.appearance || {}, palate: src.palate || {}, other: src.other || {},
+      aroma1: src.aroma1 || [], aroma2: src.aroma2 || [],
+      aromaImp: initial.aromaImp || [], aromaAfter: initial.aromaAfter || [],
+      blind: { ...base.blind, ...(src.blind || {}), done: !!src.blind?.on },
+      truth: { ...base.truth, ...migrateAroma(src.truth || {}) },
     };
   });
   const [date, setDate] = useState(initial?.date || today);
@@ -1233,9 +1257,8 @@ function NewNote({ onSave, setToast, opts, addOpt, initial, onCancel, refs }) {
     if (app.length) lines.push("【外観】" + app.join(" / "));
     const ar = [];
     if (f.aromaImp.length) ar.push(`第一印象: ${f.aromaImp.join("、")}`);
-    if (f.aroma1.length) ar.push(`第一アロマ: ${f.aroma1.join("、")}`);
-    if (f.aroma2.length) ar.push(`第二アロマ: ${f.aroma2.join("、")}`);
-    if (f.aroma3.length) ar.push(`第三アロマ: ${f.aroma3.join("、")}`);
+    if (f.aroma1.length) ar.push(`果実・花・植物: ${f.aroma1.join("、")}`);
+    if (f.aroma2.length) ar.push(`香辛料・芳香・化学物質: ${f.aroma2.join("、")}`);
     if (f.aromaAfter.length) ar.push(`香りの印象: ${f.aromaAfter.join("、")}`);
     if (ar.length) lines.push("【香り】" + ar.join(" / "));
     const pl = PAL_AXES(t).map((ax) => f.palate[ax.id]?.length ? `${ax.n}: ${f.palate[ax.id].join("、")}` : null).filter(Boolean);
@@ -1262,8 +1285,8 @@ function NewNote({ onSave, setToast, opts, addOpt, initial, onCancel, refs }) {
 
   const t = f.type;
   const ANSWER_FIELDS = [
-    { k: "grape", n: "ブドウ品種", ph: "ピノ・ノワール", opt: "grape", base: grapesFor(t) },
-    { k: "country", n: "産地（国）", ph: "フランス", opt: "country", base: COUNTRIES },
+    { k: "grape", n: "ブドウ品種", ph: "ピノ・ノワール", opt: "grape", base: grapesFor(t), req: true },
+    { k: "country", n: "産地（国）", ph: "フランス", opt: "country", base: COUNTRIES, req: true },
     { k: "region", n: "産地（地方・村）", ph: "ブルゴーニュ", opt: "region", dyn: true },
     { k: "vintage", n: "ヴィンテージ（年）", ph: "2021", im: "numeric", num: true },
     { k: "alcohol", n: "アルコール度数（%）", ph: "13.0", im: "decimal", num: true },
@@ -1306,7 +1329,10 @@ function NewNote({ onSave, setToast, opts, addOpt, initial, onCancel, refs }) {
   );
 
   const plainAnswers = ANSWER_FIELDS.map((a) => (
-    <div className="fld" key={a.k}><label className="lab">{a.n}</label>{field(a, f[a.k], (v) => set(a.k, v), f.country)}</div>
+    <div className="fld" key={a.k}>
+      <label className="lab">{a.n}{a.req && <Req />}</label>
+      {field(a, f[a.k], (v) => set(a.k, v), f.country)}
+    </div>
   ));
 
   const pairedAnswers = (
@@ -1325,7 +1351,7 @@ function NewNote({ onSave, setToast, opts, addOpt, initial, onCancel, refs }) {
             </div>
             <div className="row2">
               <div><label className="lab">自分の回答</label>{field(a, f.blind[a.k], (v) => setBlind({ [a.k]: v }), f.blind.country)}</div>
-              <div><label className="lab">正解</label>{field(a, f[a.k], (v) => set(a.k, v), f.country)}</div>
+              <div><label className="lab">正解{a.req && <Req />}</label>{field(a, f[a.k], (v) => set(a.k, v), f.country)}</div>
             </div>
           </div>
         );
@@ -1334,7 +1360,8 @@ function NewNote({ onSave, setToast, opts, addOpt, initial, onCancel, refs }) {
     </>
   );
 
-  const canSave = f.name.trim() || photo || f.aroma1.length || Object.keys(f.appearance).length;
+  const missing = [!f.grape.trim() && "ブドウ品種", !f.country.trim() && "産地（国）"].filter(Boolean);
+  const canSave = missing.length === 0;
 
   return (
     <div>
@@ -1344,7 +1371,7 @@ function NewNote({ onSave, setToast, opts, addOpt, initial, onCancel, refs }) {
         <p className="step-d">飲み方を選びます。ブラインドを選ぶと、ラベルの情報は05で「ブラインド終了」を押すまで開きません。</p>
 
         <div className="fld">
-          <label className="lab">飲み方</label>
+          <label className="lab">飲み方<Req /></label>
           <div className="seg2">
             <button className={!blindOn ? "on" : ""} onClick={() => setBlind({ on: false, done: false })}>通常</button>
             <button className={blindOn ? "on" : ""} onClick={() => setBlind({ on: true })}>ブラインド</button>
@@ -1352,7 +1379,7 @@ function NewNote({ onSave, setToast, opts, addOpt, initial, onCancel, refs }) {
         </div>
 
         <div className="fld">
-          <label className="lab">タイプ（香りと味わいの選択肢が切り替わります）</label>
+          <label className="lab">タイプ<Req />（香りと味わいの選択肢が切り替わります）</label>
           <div className="segs">
             {TYPES.map((x) => (
               <button key={x.id} className={t === x.id ? "on" : ""} onClick={() => set("type", x.id)}>{x.n}</button>
@@ -1384,14 +1411,13 @@ function NewNote({ onSave, setToast, opts, addOpt, initial, onCancel, refs }) {
 
       {/* 03 */}
       <Step key="ar" n="03" title="香り" collapsible
-        desc={`第一=ブドウ品種、第二=発酵、第三=樽と熟成。層で分けて考えると当てる力が上がります。押すと${typeName(t)}での感じ方が出ます。`}>
+        desc={`用語選択用紙と同じ2つの分類です。押すと${typeName(t)}での感じ方が出ます。`}>
         <OptionAxis ax={{ n: "第一印象", d: "グラスを回す前の、立ち上がりの強さ。", o: FIRST_IMP(t) }}
           sel={f.aromaImp} onToggle={(v) => toggleIn(null, "aromaImp", null, v)}
           extra={ok(`imp:${t}`)} onAddOption={addO(`imp:${t}`)} />
 
-        {[["aroma1", "第一アロマ", "ブドウ品種に由来する果実・花・植物・鉱物の香り。品種を当てる最大の手がかりです。", A1],
-        ["aroma2", "第二アロマ", "発酵によって生まれる香り。パン、乳製品、キャンディなど、ブドウには無かったもの。", A2],
-        ["aroma3", "第三アロマ（ブーケ）", "樽と熟成が生む香り。強いほど、若いワインではないと分かります。", A3]].map(([key, label, desc, DATA]) => (
+        {[["aroma1", "果実・花・植物", "ブドウ品種そのものに由来する香り。品種を当てる最大の手がかりです。", A1],
+        ["aroma2", "香辛料・芳香・化学物質", "鉱物、発酵や樽、熟成に由来する香り。造りと熟成の度合いが読めます。", A2]].map(([key, label, desc, DATA]) => (
           <div className="ax" key={key}>
             <div className="ax-h"><span className="ax-n">{label}</span>{f[key].length > 0 && <span className="ax-cnt">{f[key].length}</span>}</div>
             <p className="ax-d">{desc}</p>
@@ -1499,7 +1525,7 @@ function NewNote({ onSave, setToast, opts, addOpt, initial, onCancel, refs }) {
                     </Accordion>
 
                     <Accordion title="香りの正解" count={f.truth.aroma1.length + f.truth.aroma2.length + f.truth.aroma3.length}>
-                      {[["aroma1", "第一アロマ", A1], ["aroma2", "第二アロマ", A2], ["aroma3", "第三アロマ", A3]].map(([key, label, DATA]) => (
+                      {[["aroma1", "果実・花・植物", A1], ["aroma2", "香辛料・芳香・化学物質", A2]].map(([key, label, DATA]) => (
                         <div className="ax" key={key}>
                           <div className="ax-h"><span className="ax-n">{label}</span></div>
                           <div className="mine-row">自分：<b>{f[key].join("、") || "—"}</b></div>
@@ -1559,6 +1585,7 @@ function NewNote({ onSave, setToast, opts, addOpt, initial, onCancel, refs }) {
           {initial && <button className="cancel" onClick={onCancel}>やめる</button>}
           <button className="save" onClick={submit} disabled={!canSave}>{initial ? "変更を保存" : "記録する"}</button>
         </div>
+        {!canSave && <div className="savehint">{missing.join("と")}を入れると保存できます</div>}
       </div>
     </div>
   );
@@ -1576,7 +1603,7 @@ function sensoryCols(src, type, prefix) {
   const o = {};
   if (!src) {
     APP_COLS.forEach(([, l]) => { o[prefix + l] = ""; });
-    ["香りの第一印象", "第一アロマ", "第二アロマ", "第三アロマ", "香りの印象"].forEach((l) => { o[prefix + l] = ""; });
+    ["香りの第一印象", "果実・花・植物", "香辛料・芳香・化学物質", "香りの印象"].forEach((l) => { o[prefix + l] = ""; });
     PAL_COLS.forEach(([, l]) => { o[prefix + l] = ""; });
     o[prefix + "余韻"] = "";
     OTHER_COLS.forEach(([, l]) => { o[prefix + l] = ""; });
@@ -1584,9 +1611,8 @@ function sensoryCols(src, type, prefix) {
   }
   APP_COLS.forEach(([k, l]) => { o[prefix + l] = jn(src.appearance?.[k]); });
   o[prefix + "香りの第一印象"] = jn(src.aromaImp);
-  o[prefix + "第一アロマ"] = jn(src.aroma1);
-  o[prefix + "第二アロマ"] = jn(src.aroma2);
-  o[prefix + "第三アロマ"] = jn(src.aroma3);
+  o[prefix + "果実・花・植物"] = jn(src.aroma1);
+  o[prefix + "香辛料・芳香・化学物質"] = jn(src.aroma2);
   o[prefix + "香りの印象"] = jn(src.aromaAfter);
   PAL_COLS.forEach(([k, l]) => { o[prefix + l] = jn(src.palate?.[k]); });
   o[prefix + "余韻"] = src.finish || "";
@@ -1644,9 +1670,8 @@ async function exportExcel(notes, refs) {
     };
     APP_COLS.forEach(([k, l]) => push("外観", l, n.appearance?.[k], truth?.appearance?.[k], model?.appearance?.[k]));
     push("香り", "第一印象", n.aromaImp, truth?.aromaImp, model?.aromaImp);
-    push("香り", "第一アロマ", n.aroma1, truth?.aroma1, model?.aroma1);
-    push("香り", "第二アロマ", n.aroma2, truth?.aroma2, model?.aroma2);
-    push("香り", "第三アロマ", n.aroma3, truth?.aroma3, model?.aroma3);
+    push("香り", "果実・花・植物", n.aroma1, truth?.aroma1, model?.aroma1);
+    push("香り", "香辛料・芳香・化学物質", n.aroma2, truth?.aroma2, model?.aroma2);
     push("香り", "香りの印象", n.aromaAfter, truth?.aromaAfter, model?.aromaAfter);
     PAL_COLS.forEach(([k, l]) => push("味わい", l, n.palate?.[k], truth?.palate?.[k], model?.palate?.[k]));
     push("味わい", "余韻", n.finish ? [n.finish] : [], truth?.finish ? [truth.finish] : [], model?.finish ? [model.finish] : []);
@@ -1690,7 +1715,7 @@ function Notebook({ notes, onOpen, setToast, refs }) {
     const s = [...notes].sort((a, b) => (b.date + b.id).localeCompare(a.date + a.id));
     if (!k) return s;
     return s.filter((n) => [n.name, n.producer, n.country, n.region, n.grape, n.vintage, n.memo,
-      ...(n.aroma1 || []), ...(n.aroma2 || []), ...(n.aroma3 || []), ...(n.appearance?.hue || [])].join(" ").toLowerCase().includes(k));
+      ...(n.aroma1 || []), ...(n.aroma2 || []), ...(n.appearance?.hue || [])].join(" ").toLowerCase().includes(k));
   }, [notes, q]);
 
   return (
@@ -1718,7 +1743,7 @@ function Notebook({ notes, onOpen, setToast, refs }) {
           {list.map((n) => {
             const hue = (n.appearance?.hue || [])[0];
             const sw = HUE_HEX[hue] || (n.type === "white" ? "#DFC352" : "#8D2030");
-            const words = [...(n.aroma1 || []), ...(n.aroma3 || [])].slice(0, 5);
+            const words = [...(n.aroma1 || []), ...(n.aroma2 || [])].slice(0, 5);
             const g = n.blind?.on ? n.blind.judge?.grape : null;
             return (
               <button key={n.id} className="card" onClick={() => onOpen(n)}>
@@ -1928,7 +1953,7 @@ export default function App({ user, onSignOut }) {
   const [editing, setEditing] = useState(null);
   const [toast, setToast] = useState("");
 
-  useEffect(() => { Promise.all([loadNotes(), loadOpts(), loadRefs()]).then(([n, o, r]) => { setNotes(n); setOpts(o); setRefs(r); setReady(true); }); }, []);
+  useEffect(() => { Promise.all([loadNotes(), loadOpts(), loadRefs()]).then(([n, o, r]) => { setNotes(n.map(migrateAroma)); setOpts(o); setRefs(r.map(migrateAroma)); setReady(true); }); }, []);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(""), 2600); return () => clearTimeout(t); }, [toast]);
 
   const restoreRefs = async () => {

@@ -5,8 +5,8 @@ import csv, json, sys
 APP = {"清澄度":"clarity","輝き":"shine","色調":"hue","濃淡":"depth","粘性":"visc","外観の印象":"imp"}
 PAL = {"アタック":"attack","甘み":"sweet","酸味":"acid","タンニン分":"tannin","苦味":"bitter",
        "バランス":"balance","アルコール":"alc"}
-AROMA = {"第一印象":"aromaImp","第一アロマ":"aroma1","第二アロマ":"aroma2",
-         "第三アロマ":"aroma3","香りの印象":"aromaAfter"}
+AROMA = {"第一印象":"aromaImp","果実・花・植物":"aroma1",
+         "香辛料・芳香・化学物質":"aroma2","香りの印象":"aromaAfter"}
 OTHER = {"評価":"eval","適正温度":"temp","グラス":"glass"}
 
 def split(c, sep="、"):
