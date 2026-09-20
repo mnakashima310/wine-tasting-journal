@@ -1162,12 +1162,17 @@ const GROUP_OF = {};
   Object.keys(set).forEach((t) => set[t].forEach((g) => g.w.forEach(([w]) => { GROUP_OF[w] = key; })))
 );
 function migrateAroma(o) {
-  if (!o || (!o.aroma3?.length && o.aroma3 !== undefined && !o.aroma3)) { /* fallthrough */ }
-  const all = [...(o?.aroma1 || []), ...(o?.aroma2 || []), ...(o?.aroma3 || [])];
-  if (!all.length) return o;
-  const a1 = [], a2 = [];
-  all.forEach((w) => (GROUP_OF[w] === "aroma2" ? a2 : a1).push(w));
-  return { ...o, aroma1: [...new Set(a1)], aroma2: [...new Set(a2)], aroma3: undefined };
+  if (!o) return o;
+  const all = [...(o.aroma1 || []), ...(o.aroma2 || []), ...(o.aroma3 || [])];
+  let out = o;
+  if (all.length) {
+    const a1 = [], a2 = [];
+    all.forEach((w) => (GROUP_OF[w] === "aroma2" ? a2 : a1).push(w));
+    out = { ...o, aroma1: [...new Set(a1)], aroma2: [...new Set(a2)], aroma3: undefined };
+  }
+  // 登録した正解の側も同じ分類に移す
+  if (out.truth) out = { ...out, truth: migrateAroma(out.truth) };
+  return out;
 }
 
 /* ================= 記録フォーム ================= */
@@ -1193,7 +1198,7 @@ function NewNote({ onSave, setToast, opts, addOpt, initial, onCancel, refs }) {
       aroma1: src.aroma1 || [], aroma2: src.aroma2 || [],
       aromaImp: initial.aromaImp || [], aromaAfter: initial.aromaAfter || [],
       blind: { ...base.blind, ...(src.blind || {}), done: !!src.blind?.on },
-      truth: { ...base.truth, ...migrateAroma(src.truth || {}) },
+      truth: { ...base.truth, ...(src.truth || {}) },
     };
   });
   const [date, setDate] = useState(initial?.date || today);
@@ -1514,32 +1519,32 @@ function NewNote({ onSave, setToast, opts, addOpt, initial, onCancel, refs }) {
 
                 {f.truthOn && (
                   <>
-                    <Accordion title="外観の正解" count={Object.values(f.truth.appearance).flat().length}>
+                    <Accordion title="外観の正解" count={Object.values(f.truth.appearance || {}).flat().length}>
                       {APP_AXES(t).map((ax) => (
                         <div key={ax.id}>
                           <div className="mine-row">自分：<b>{f.appearance[ax.id]?.join("、") || "—"}</b></div>
-                          <OptionAxis ax={{ ...ax, d: null }} sel={f.truth.appearance[ax.id]} onToggle={(v) => toggleIn("truth", "appearance", ax.id, v)}
+                          <OptionAxis ax={{ ...ax, d: null }} sel={f.truth.appearance?.[ax.id]} onToggle={(v) => toggleIn("truth", "appearance", ax.id, v)}
                             extra={ok(`app:${t}:${ax.id}`)} onAddOption={addO(`app:${t}:${ax.id}`)} />
                         </div>
                       ))}
                     </Accordion>
 
-                    <Accordion title="香りの正解" count={f.truth.aroma1.length + f.truth.aroma2.length + f.truth.aroma3.length}>
+                    <Accordion title="香りの正解" count={(f.truth.aroma1?.length || 0) + (f.truth.aroma2?.length || 0)}>
                       {[["aroma1", "果実・花・植物", A1], ["aroma2", "香辛料・芳香・化学物質", A2]].map(([key, label, DATA]) => (
                         <div className="ax" key={key}>
                           <div className="ax-h"><span className="ax-n">{label}</span></div>
-                          <div className="mine-row">自分：<b>{f[key].join("、") || "—"}</b></div>
-                          <TagGroups groups={DATA[t]} picked={f.truth[key]} onTap={(w) => toggleIn("truth", key, null, w)} focus={null} type={t}
+                          <div className="mine-row">自分：<b>{(f[key] || []).join("、") || "—"}</b></div>
+                          <TagGroups groups={DATA[t]} picked={f.truth[key] || []} onTap={(w) => toggleIn("truth", key, null, w)} focus={null} type={t}
                             extra={ok(`${key}:${t}`)} onAddOption={addO(`${key}:${t}`)} />
                         </div>
                       ))}
                     </Accordion>
 
-                    <Accordion title="味わいの正解" count={Object.values(f.truth.palate).flat().length + (f.truth.finish ? 1 : 0)}>
+                    <Accordion title="味わいの正解" count={Object.values(f.truth.palate || {}).flat().length + (f.truth.finish ? 1 : 0)}>
                       {PAL_AXES(t).map((ax) => (
                         <div key={ax.id}>
                           <div className="mine-row">自分：<b>{f.palate[ax.id]?.join("、") || "—"}</b></div>
-                          <OptionAxis ax={{ ...ax, d: null }} sel={f.truth.palate[ax.id]} onToggle={(v) => toggleIn("truth", "palate", ax.id, v)}
+                          <OptionAxis ax={{ ...ax, d: null }} sel={f.truth.palate?.[ax.id]} onToggle={(v) => toggleIn("truth", "palate", ax.id, v)}
                             extra={ok(`pal:${t}:${ax.id}`)} onAddOption={addO(`pal:${t}:${ax.id}`)} />
                         </div>
                       ))}
@@ -1553,6 +1558,16 @@ function NewNote({ onSave, setToast, opts, addOpt, initial, onCancel, refs }) {
                           ))}
                         </div>
                       </div>
+                    </Accordion>
+
+                    <Accordion title="その他の正解" count={Object.values(f.truth.other || {}).flat().length}>
+                      {OTHER_AXES(t).map((ax) => (
+                        <div key={ax.id}>
+                          <div className="mine-row">自分：<b>{f.other?.[ax.id]?.join("、") || "—"}</b></div>
+                          <OptionAxis ax={{ ...ax, d: null }} sel={f.truth.other?.[ax.id]} onToggle={(v) => toggleIn("truth", "other", ax.id, v)}
+                            extra={ok(`oth:${t}:${ax.id}`)} onAddOption={addO(`oth:${t}:${ax.id}`)} />
+                        </div>
+                      ))}
                     </Accordion>
                   </>
                 )}
