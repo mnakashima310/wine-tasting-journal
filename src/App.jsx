@@ -170,6 +170,25 @@ textarea.inp{min-height:80px;resize:vertical;line-height:1.8;font-size:15px}
 .rv-tg i{font-style:normal;font-size:12.5px;padding:3px 8px;border-radius:2px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
 .rv-tg i.hit{background:var(--wine);border-color:var(--wine);color:#fff;font-weight:600}
 .restore{margin-top:20px;padding:13px 22px;background:var(--card);border:1px solid var(--wine);color:var(--wine);border-radius:2px;font-size:13.5px;font-weight:600;letter-spacing:.1em}
+.score{background:var(--wine);color:#fff;border-radius:2px;padding:18px;margin-bottom:12px}
+.score-top{display:flex;align-items:baseline;gap:10px}
+.score-n{font-family:var(--serif);font-size:34px;letter-spacing:.02em}
+.score-n small{font-size:14px;font-family:var(--sans);color:rgba(255,255,255,.88)}
+.score-p{margin-left:auto;font-family:var(--mono);font-size:17px;font-weight:600}
+.score-bar{height:6px;background:rgba(255,255,255,.28);border-radius:3px;overflow:hidden;margin:12px 0 10px}
+.score-bar i{display:block;height:100%;background:#fff}
+.score-rank{font-size:15px;font-weight:600;letter-spacing:.1em}
+.score-note{font-size:12px;line-height:1.75;color:rgba(255,255,255,.88);margin-top:10px}
+.score-sub{font-style:normal;font-size:12px;color:var(--sub)}
+.score-detail{margin-top:8px;border:1px solid var(--line);border-radius:2px;background:var(--card)}
+.score-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line);font-size:13px}
+.score-row:last-child{border-bottom:none}
+.score-row span:first-child{width:52px;color:var(--sub);font-size:11.5px}
+.score-row span:nth-child(2){flex:1}
+.score-row b{font-family:var(--mono);font-size:13px;font-weight:600}
+.score-row b.full{color:#2C5A34}
+.score-row b.part{color:#8A6A1F}
+.score-row b.zero{color:#A3231F}
 .refcard{margin-bottom:9px}
 .refmemo{margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:12.5px;line-height:1.8;color:var(--sub)}
 .savebar-row{display:flex;gap:9px}
@@ -240,6 +259,11 @@ textarea.inp{min-height:80px;resize:vertical;line-height:1.8;font-size:15px}
 .rv-top .l{font-size:11px;font-weight:600;letter-spacing:.26em;color:rgba(255,255,255,.88);margin-bottom:10px}
 .rv-big{font-family:var(--serif);font-size:44px;font-weight:400;letter-spacing:.02em;line-height:1.05}
 .rv-big small{font-size:14px;font-weight:400;color:rgba(255,255,255,.88);margin-left:9px}
+.rv-score{margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.3)}
+.rv-score-l{font-size:12px;color:rgba(255,255,255,.9);text-align:left}
+.rv-spark{display:flex;align-items:flex-end;gap:5px;height:44px;margin-top:9px}
+.rv-spark span{flex:1;height:100%;display:flex;align-items:flex-end;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden}
+.rv-spark i{display:block;width:100%;background:#fff;border-radius:2px}
 .rv-item{background:var(--card);border:1px solid var(--line);border-radius:2px;margin:0 20px 9px;overflow:hidden}
 .rv-h{display:flex;align-items:center;gap:12px;padding:14px;width:100%;text-align:left}
 .rv-g{font-family:var(--serif);font-size:17px;font-weight:400;letter-spacing:.04em}
@@ -262,7 +286,7 @@ textarea.inp{min-height:80px;resize:vertical;line-height:1.8;font-size:15px}
 .rv-tx u{display:block;text-decoration:none;font-size:12.5px;color:var(--wine);font-weight:600;margin-top:4px}
 .rv-cv{color:var(--sub);font-size:19px;flex:none}
 
-.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:13px 22px;border-radius:2px;font-size:14px;z-index:60;animation:rise .2s;max-width:88%;text-align:center;line-height:1.6}
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:14px 22px;border-radius:2px;font-size:14px;z-index:60;animation:rise .2s;max-width:88%;text-align:center;line-height:1.8;white-space:pre-line}
 .loading{padding:60px;text-align:center;color:var(--sub);font-size:14px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 `;
@@ -1136,6 +1160,138 @@ function RefList({ refs, opts, addOpt, onSave, onDelete, onRestore }) {
   );
 }
 
+/* ================= 採点 ================= */
+/* 本試験の選択数を上限に、正解と一致した数を数える。選びすぎても減点しない。 */
+const APP_SLOTS = { clarity: 1, shine: 1, hue: 2, depth: 1, visc: 1, imp: 2 };   // 計8
+const PAL_SLOTS = { attack: 1, sweet: 1, acid: 1, tannin: 1, bitter: 1, balance: 1, alc: 1 }; // 計6＋余韻1
+const OTHER_SLOTS = { eval: 1, temp: 1, glass: 2 };                              // 計4
+const RANKS = [[80, "かなり合格圏"], [70, "合格圏"], [60, "ボーダー"], [50, "やや厳しい"], [0, "厳しい"]];
+
+function scoreNote(n) {
+  const t = n.type;
+  const tr = n.truthOn ? n.truth : null;
+  const b = n.blind?.on ? n.blind : null;
+  if (!tr && !b) return null;
+
+  const hit = (mine, truth, slot) =>
+    Math.min(slot, (mine || []).filter((x) => (truth || []).includes(x)).length);
+
+  const rows = [];
+  const cat = {};
+
+  if (tr) {
+    let h = 0, mx = 0;
+    APP_AXES(t).forEach((ax) => {
+      const slot = APP_SLOTS[ax.id]; if (!slot) return;
+      const v = hit(n.appearance?.[ax.id], tr.appearance?.[ax.id], slot);
+      h += v; mx += slot; rows.push({ c: "外観", n: ax.n, v, slot });
+    });
+    cat.外観 = { h, mx, pts: 8, score: mx ? (h / mx) * 8 : 0 };
+
+    h = 0; mx = 0;
+    [["aromaImp", "第一印象", 2], ["aroma1", "果実・花・植物", 4],
+     ["aroma2", "香辛料・芳香・化学物質", 4], ["aromaAfter", "香りの印象", 2]].forEach(([k, label, slot]) => {
+      const v = hit(n[k], tr[k], slot);
+      h += v; mx += slot; rows.push({ c: "香り", n: label, v, slot });
+    });
+    cat.香り = { h, mx, pts: 12, score: (h / mx) * 12 };
+
+    h = 0; mx = 0;
+    PAL_AXES(t).forEach((ax) => {
+      const slot = PAL_SLOTS[ax.id]; if (!slot) return;
+      const v = hit(n.palate?.[ax.id], tr.palate?.[ax.id], slot);
+      h += v; mx += slot; rows.push({ c: "味わい", n: ax.n, v, slot });
+    });
+    {
+      const v = hit(n.finish ? [n.finish] : [], tr.finish ? [tr.finish] : [], 1);
+      h += v; mx += 1; rows.push({ c: "味わい", n: "余韻", v, slot: 1 });
+    }
+    cat.味わい = { h, mx, pts: 8, score: mx ? (h / mx) * 8 : 0 };
+
+    h = 0; mx = 0;
+    OTHER_AXES(t).forEach((ax) => {
+      const slot = OTHER_SLOTS[ax.id]; if (!slot) return;
+      const v = hit(n.other?.[ax.id], tr.other?.[ax.id], slot);
+      h += v; mx += slot; rows.push({ c: "その他", n: ax.n, v, slot });
+    });
+    cat.その他 = { h, mx, pts: 6, score: mx ? (h / mx) * 6 : 0 };
+  }
+
+  if (b) {
+    const j = b.judge || {};
+    const country = j.country === true;
+    cat.収穫年 = { pts: 3, score: country && j.vintage === true ? 3 : 0, ok: country && j.vintage === true };
+    cat.生産地 = { pts: 5, score: country ? 5 : 0, ok: country };
+    cat.品種 = { pts: 8, score: j.grape === true ? 8 : 0, ok: j.grape === true };
+  }
+
+  const total = Object.values(cat).reduce((a, c) => a + c.score, 0);
+  const max = Object.values(cat).reduce((a, c) => a + c.pts, 0);
+  const pct = max ? (total / max) * 100 : 0;
+  return {
+    cat, rows, total, max, pct,
+    rank: RANKS.find(([p]) => pct >= p)[1],
+    partial: !tr || !b,
+  };
+}
+
+const CAT_ORDER = ["外観", "香り", "味わい", "その他", "収穫年", "生産地", "品種"];
+
+function ScoreCard({ note }) {
+  const [open, setOpen] = useState(false);
+  const r = scoreNote(note);
+  if (!r) return null;
+  const f1 = (x) => (Math.round(x * 100) / 100).toFixed(2).replace(/\.00$/, "");
+  return (
+    <div className="dt-sec">
+      <div className="dt-sec-t">採点（本試験の配点に換算）</div>
+      <div className="score">
+        <div className="score-top">
+          <span className="score-n">{f1(r.total)}<small> / {r.max}点</small></span>
+          <span className="score-p">{Math.round(r.pct)}%</span>
+        </div>
+        <div className="score-bar"><i style={{ width: Math.min(100, r.pct) + "%" }} /></div>
+        <div className="score-rank">{r.rank}</div>
+        {r.partial && (
+          <div className="score-note">
+            {!note.truthOn && "外観・香り・味わい・その他の正解が未登録です。"}
+            {!note.blind?.on && "ブラインドではないため、品種・生産地・収穫年は採点対象外です。"}
+          </div>
+        )}
+      </div>
+
+      {CAT_ORDER.filter((c) => r.cat[c]).map((c) => (
+        <div className="dt-row" key={c}>
+          <span>{c}</span>
+          <span>{f1(r.cat[c].score)} / {r.cat[c].pts}点
+            {r.cat[c].mx !== undefined && <em className="score-sub">　（{r.cat[c].h} / {r.cat[c].mx}）</em>}
+            {r.cat[c].ok !== undefined && <em className="score-sub">　{r.cat[c].ok ? "○" : "×"}</em>}
+          </span>
+        </div>
+      ))}
+
+      {r.rows.length > 0 && (
+        <>
+          <button className="linkbtn" style={{ marginTop: 8 }} onClick={() => setOpen(!open)}>
+            {open ? "内訳を閉じる" : "小項目の内訳を見る"}
+          </button>
+          {open && (
+            <div className="score-detail">
+              {r.rows.map((x, i) => (
+                <div className="score-row" key={i}>
+                  <span>{x.c}</span><span>{x.n}</span>
+                  <b className={x.v === x.slot ? "full" : x.v ? "part" : "zero"}>{x.v} / {x.slot}</b>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+      <p className="read-note">J.S.A.は合格最低点を公表していないため、判定はあくまで目安です。</p>
+    </div>
+  );
+}
+
 /* ================= コメント生成 ================= */
 function buildComment(n) {
   const p = [], a = n.appearance || {}, pa = n.palate || {};
@@ -1529,7 +1685,12 @@ function NewNote({ onSave, setToast, opts, addOpt, initial, onCancel, refs }) {
                       ))}
                     </Accordion>
 
-                    <Accordion title="香りの正解" count={(f.truth.aroma1?.length || 0) + (f.truth.aroma2?.length || 0)}>
+                    <Accordion title="香りの正解" count={(f.truth.aromaImp?.length || 0) + (f.truth.aroma1?.length || 0) + (f.truth.aroma2?.length || 0) + (f.truth.aromaAfter?.length || 0)}>
+                      <div>
+                        <div className="mine-row">自分：<b>{(f.aromaImp || []).join("、") || "—"}</b></div>
+                        <OptionAxis ax={{ n: "第一印象", o: FIRST_IMP(t) }} sel={f.truth.aromaImp} onToggle={(v) => toggleIn("truth", "aromaImp", null, v)}
+                          extra={ok(`imp:${t}`)} onAddOption={addO(`imp:${t}`)} />
+                      </div>
                       {[["aroma1", "果実・花・植物", A1], ["aroma2", "香辛料・芳香・化学物質", A2]].map(([key, label, DATA]) => (
                         <div className="ax" key={key}>
                           <div className="ax-h"><span className="ax-n">{label}</span></div>
@@ -1538,6 +1699,11 @@ function NewNote({ onSave, setToast, opts, addOpt, initial, onCancel, refs }) {
                             extra={ok(`${key}:${t}`)} onAddOption={addO(`${key}:${t}`)} />
                         </div>
                       ))}
+                      <div>
+                        <div className="mine-row">自分：<b>{(f.aromaAfter || []).join("、") || "—"}</b></div>
+                        <OptionAxis ax={{ n: "香りの印象", o: AROMA_IMP(t) }} sel={f.truth.aromaAfter} onToggle={(v) => toggleIn("truth", "aromaAfter", null, v)}
+                          extra={ok(`aimp:${t}`)} onAddOption={addO(`aimp:${t}`)} />
+                      </div>
                     </Accordion>
 
                     <Accordion title="味わいの正解" count={Object.values(f.truth.palate || {}).flat().length + (f.truth.finish ? 1 : 0)}>
@@ -1663,6 +1829,22 @@ async function exportExcel(notes, refs) {
       ...sensoryCols(n.truthOn ? n.truth : null, n.type, "正解:"),
       "外観のメモ": n.appearanceMemo || "", "香りのメモ": n.aromaMemo || "",
       "味わいのメモ": n.palateMemo || "", "自由メモ": n.memo || "",
+      ...(() => {
+        const r = scoreNote(n);
+        if (!r) return { "採点": "" };
+        const f = (x) => Math.round(x * 100) / 100;
+        return {
+          "採点": r.max === 50 ? "満点対象" : "一部",
+          "得点_外観": r.cat.外観 ? f(r.cat.外観.score) : "",
+          "得点_香り": r.cat.香り ? f(r.cat.香り.score) : "",
+          "得点_味わい": r.cat.味わい ? f(r.cat.味わい.score) : "",
+          "得点_その他": r.cat.その他 ? f(r.cat.その他.score) : "",
+          "得点_収穫年": r.cat.収穫年 ? r.cat.収穫年.score : "",
+          "得点_生産地": r.cat.生産地 ? r.cat.生産地.score : "",
+          "得点_品種": r.cat.品種 ? r.cat.品種.score : "",
+          "合計": f(r.total), "満点": r.max, "得点率": Math.round(r.pct) + "%", "判定": r.rank,
+        };
+      })(),
       "写真": n.hasPhoto ? "あり" : "",
       "ID": n.id,
     };
@@ -1831,6 +2013,8 @@ function Detail({ note, onBack, onDelete, onEdit, refs }) {
           </div>
         )}
 
+        <ScoreCard note={note} />
+
         <button className={"cmp-toggle" + (showRef ? " on" : "")} onClick={() => setShowRef(!showRef)}>
           模範回答を表示する{showRef ? "　▲" : "　▼"}
         </button>
@@ -1897,6 +2081,14 @@ function Review({ notes, onOpen }) {
   }, [blinds, sort]);
 
   const total = blinds.length, ok = blinds.filter((n) => n.blind.judge?.grape).length;
+  const scored = useMemo(() => {
+    const list = [...blinds].sort((a, b) => (a.date + a.id).localeCompare(b.date + b.id))
+      .map((n) => ({ note: n, ...(scoreNote(n) || {}) }))
+      .filter((x) => x.max === 50);
+    return list;
+  }, [blinds]);
+  const avg = scored.length ? scored.reduce((a, x) => a + x.total, 0) / scored.length : 0;
+  const best = scored.length ? Math.max(...scored.map((x) => x.total)) : 0;
 
   if (!allBlinds.length) return (
     <div className="empty">
@@ -1910,6 +2102,17 @@ function Review({ notes, onOpen }) {
       <div className="rv-top">
         <div className="l">GRAPE ACCURACY</div>
         <div className="rv-big">{total ? Math.round((ok / total) * 100) : 0}%<small>{ok} / {total} 本</small></div>
+        {scored.length > 0 && (
+          <div className="rv-score">
+            <div className="rv-score-l">採点済み {scored.length}本　平均 {avg.toFixed(1)}点 / 50　最高 {best.toFixed(1)}点</div>
+            <div className="rv-spark">
+              {scored.slice(-8).map((x, i) => (
+                <span key={i}><i style={{ height: Math.max(4, Math.min(100, x.pct)) + "%" }} /></span>
+              ))}
+            </div>
+            <div className="rv-score-l" style={{ marginTop: 6 }}>直近{Math.min(8, scored.length)}本の得点推移（左が古い）</div>
+          </div>
+        )}
       </div>
       <TypeTabs value={filter} onChange={setFilter} items={allBlinds} />
 
@@ -1969,7 +2172,7 @@ export default function App({ user, onSignOut }) {
   const [toast, setToast] = useState("");
 
   useEffect(() => { Promise.all([loadNotes(), loadOpts(), loadRefs()]).then(([n, o, r]) => { setNotes(n.map(migrateAroma)); setOpts(o); setRefs(r.map(migrateAroma)); setReady(true); }); }, []);
-  useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(""), 2600); return () => clearTimeout(t); }, [toast]);
+  useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(""), toast.includes("採点") ? 5000 : 2600); return () => clearTimeout(t); }, [toast]);
 
   const restoreRefs = async () => {
     const tpl = await loadTemplates();
@@ -1999,7 +2202,14 @@ export default function App({ user, onSignOut }) {
     setNotes(next);
     if (photo) await savePhoto(note.id, photo);
     const okk = await saveNotes(next);
-    setToast(okk ? (exists ? "変更を保存しました" : "一覧に書きとめました") : "保存できませんでした");
+    if (!okk) setToast("保存できませんでした");
+    else {
+      const r = scoreNote(note);
+      const head = exists ? "変更を保存しました" : "一覧に書きとめました";
+      setToast(r
+        ? `${head}\n採点 ${(Math.round(r.total * 100) / 100)} / ${r.max}点（${Math.round(r.pct)}%）　${r.rank}`
+        : head);
+    }
     setEditing(null);
     if (exists) setOpen(note); else setTab("book");
   };
