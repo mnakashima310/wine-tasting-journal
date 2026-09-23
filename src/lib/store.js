@@ -1,12 +1,19 @@
 import { supabase } from "./supabase";
 
 /* ------------------------------------------------------------------
-   記録の保存先。RLS により、どのクエリも自分の行しか触れない。
-   アプリ側の note オブジェクトは data(jsonb) に丸ごと入れ、
-   検索や集計に使う項目だけ列としても持たせる。
+   保存先。RLS により、どのクエリも自分の行しか触れない。
+
+   【重要】書き込みは「触れた1件だけ」を対象にする。
+   一覧を丸ごと送って差分削除する作りは、読み込みに失敗したときに
+   全件を消す事故を起こすため廃止した。
+   削除は deleteNote / deleteRef を明示的に呼んだときだけ実行する。
 ------------------------------------------------------------------ */
 
 const uid = async () => (await supabase.auth.getUser()).data.user?.id;
+
+/** 読み込みに成功したかどうか。失敗している間は一切書き込まない。 */
+let notesLoaded = false;
+let refsLoaded = false;
 
 const toRow = (n, user_id) => ({
   id: String(n.id),
@@ -28,32 +35,72 @@ const toRow = (n, user_id) => ({
   updated_at: new Date().toISOString(),
 });
 
+/* ---------------- 端末内の控え ----------------
+   通信とは別に、読み書きした内容を端末にも残す。
+   万一サーバー側が空になっても、ここから戻せる。 */
+const BK = "wtj:backup:notes";
+const backupSave = (notes) => {
+  try {
+    if (!Array.isArray(notes) || !notes.length) return;
+    localStorage.setItem(BK, JSON.stringify({ at: Date.now(), notes }));
+  } catch {}
+};
+export const backupRead = () => {
+  try {
+    const raw = localStorage.getItem(BK);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+};
+
+/* ---------------- 記録 ---------------- */
 export async function loadNotes() {
   const { data, error } = await supabase
     .from("notes")
     .select("data")
     .order("date", { ascending: false });
-  if (error) { console.error(error); return []; }
-  return (data || []).map((r) => r.data);
+  if (error) {
+    console.error(error);
+    notesLoaded = false;
+    throw new Error("記録を読み込めませんでした");
+  }
+  notesLoaded = true;
+  const notes = (data || []).map((r) => r.data).filter(Boolean);
+  backupSave(notes);
+  return notes;
 }
 
-/** アプリ側は配列まるごと渡してくる。差分を upsert / delete する。 */
-export async function saveNotes(notes) {
+/** 1件だけ保存する。既存の他の行には一切触れない。 */
+export async function saveNote(note, allNotes) {
+  if (!notesLoaded) { console.error("未読み込みのため保存を中止しました"); return false; }
   const user_id = await uid();
   if (!user_id) return false;
-
-  const rows = notes.map((n) => toRow(n, user_id));
-  const { error: upErr } = await supabase.from("notes").upsert(rows, { onConflict: "user_id,id" });
-  if (upErr) { console.error(upErr); return false; }
-
-  const keep = rows.map((r) => r.id);
-  const { data: existing } = await supabase.from("notes").select("id");
-  const gone = (existing || []).map((r) => r.id).filter((id) => !keep.includes(id));
-  if (gone.length) {
-    const { error: delErr } = await supabase.from("notes").delete().in("id", gone);
-    if (delErr) { console.error(delErr); return false; }
-  }
+  const { error } = await supabase
+    .from("notes")
+    .upsert([toRow(note, user_id)], { onConflict: "user_id,id" });
+  if (error) { console.error(error); return false; }
+  backupSave(allNotes);
   return true;
+}
+
+/** 明示的に削除したときだけ呼ぶ。 */
+export async function deleteNote(id, allNotes) {
+  if (!notesLoaded) return false;
+  const { error } = await supabase.from("notes").delete().eq("id", String(id));
+  if (error) { console.error(error); return false; }
+  backupSave(allNotes);
+  return true;
+}
+
+/** 端末の控えからサーバーへ書き戻す（復元用）。 */
+export async function restoreFromBackup() {
+  const bk = backupRead();
+  if (!bk?.notes?.length) return 0;
+  const user_id = await uid();
+  if (!user_id) return 0;
+  const rows = bk.notes.map((n) => toRow(n, user_id));
+  const { error } = await supabase.from("notes").upsert(rows, { onConflict: "user_id,id" });
+  if (error) { console.error(error); return 0; }
+  return rows.length;
 }
 
 /* ---------------- 写真：Storage バケット labels ---------------- */
@@ -102,15 +149,13 @@ export async function loadOpts() {
   return out;
 }
 
-export async function saveOpts(opts) {
+/** 追加された1件だけを足す。既存は消さない。 */
+export async function saveOpts(key, value) {
   const user_id = await uid();
   if (!user_id) return;
-  const rows = Object.entries(opts).flatMap(([key, vals]) =>
-    (vals || []).map((value) => ({ user_id, key, value })));
-  if (!rows.length) return;
   const { error } = await supabase
     .from("user_options")
-    .upsert(rows, { onConflict: "user_id,key,value" });
+    .upsert([{ user_id, key, value }], { onConflict: "user_id,key,value" });
   if (error) console.error(error);
 }
 
@@ -120,28 +165,40 @@ export async function loadRefs() {
     .from("references")
     .select("data")
     .order("grape", { ascending: true });
-  if (error) { console.error(error); return []; }
-  return (data || []).map((r) => r.data);
+  if (error) {
+    console.error(error);
+    refsLoaded = false;
+    throw new Error("模範回答を読み込めませんでした");
+  }
+  refsLoaded = true;
+  return (data || []).map((r) => r.data).filter(Boolean);
 }
 
-export async function saveRefs(refs) {
+const refRow = (r, user_id) => ({
+  id: String(r.id), user_id,
+  grape: r.grape || null, type: r.type || null,
+  country: r.country || null, region: r.region || null,
+  data: r, updated_at: new Date().toISOString(),
+});
+
+/** 1件だけ保存する。 */
+export async function saveRefs(refs, target) {
+  if (!refsLoaded) { console.error("未読み込みのため保存を中止しました"); return false; }
   const user_id = await uid();
   if (!user_id) return false;
+  const list = target ? [target] : refs;
+  if (!list.length) return true;
+  const { error } = await supabase
+    .from("references")
+    .upsert(list.map((r) => refRow(r, user_id)), { onConflict: "user_id,id" });
+  if (error) { console.error(error); return false; }
+  return true;
+}
 
-  const rows = refs.map((r) => ({
-    id: String(r.id), user_id,
-    grape: r.grape || null, type: r.type || null,
-    country: r.country || null, region: r.region || null,
-    data: r, updated_at: new Date().toISOString(),
-  }));
-  if (rows.length) {
-    const { error } = await supabase.from("references").upsert(rows, { onConflict: "user_id,id" });
-    if (error) { console.error(error); return false; }
-  }
-  const keep = rows.map((r) => r.id);
-  const { data: existing } = await supabase.from("references").select("id");
-  const gone = (existing || []).map((r) => r.id).filter((id) => !keep.includes(id));
-  if (gone.length) await supabase.from("references").delete().in("id", gone);
+export async function deleteRef(id) {
+  if (!refsLoaded) return false;
+  const { error } = await supabase.from("references").delete().eq("id", String(id));
+  if (error) { console.error(error); return false; }
   return true;
 }
 
