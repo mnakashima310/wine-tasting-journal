@@ -31,9 +31,12 @@ const CSS = `
 .hd h1{flex:1;font-family:var(--serif);font-size:20px;letter-spacing:.1em;margin:0;font-weight:400;line-height:1.3}
 .hd-out{flex:none;display:flex;align-items:center;justify-content:center;width:38px;height:38px;color:#fff;border:1px solid rgba(255,255,255,.45);border-radius:2px}
 .hd-out:active{background:rgba(255,255,255,.14)}
-.tabs{display:flex;background:var(--paper);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;padding-top:env(safe-area-inset-top)}
-.tab{flex:1;padding:15px 0 13px;font-size:14px;font-weight:600;letter-spacing:.14em;color:var(--sub);border-bottom:2px solid transparent;margin-bottom:-1px}
-.tab.on{color:var(--wine);font-weight:600;border-bottom-color:var(--wine);background:var(--paper)}
+.tabs{display:flex;background:var(--paper);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top)}
+.tab{flex:1;padding:14px 0 13px;font-size:14px;font-weight:400;letter-spacing:.06em;color:var(--sub);background:var(--sand);position:relative}
+.tab+.tab{box-shadow:-1px 0 0 var(--line)}
+.tab::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:transparent}
+.tab.on{color:var(--wine);font-weight:600;background:var(--paper)}
+.tab.on::after{background:var(--wine)}
 .tab-n{display:inline-block;margin-left:8px;min-width:22px;padding:2px 7px;border-radius:11px;background:var(--sand);color:var(--sub);font-size:11.5px;font-weight:600;letter-spacing:0;vertical-align:1px;font-family:var(--mono)}
 .tab.on .tab-n{background:var(--wine);color:#fff}
 .segs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
@@ -143,7 +146,6 @@ textarea.inp{min-height:80px;resize:vertical;line-height:1.8;font-size:15px}
 .mine-row b{font-weight:600;color:var(--ink)}
 
 .savebar{position:fixed;bottom:0;left:0;right:0;max-width:540px;margin:0 auto;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(244,240,234,.97);backdrop-filter:blur(9px);border-top:1px solid var(--line);z-index:30}
-.tab{letter-spacing:.06em}
 .fab{position:fixed;right:14px;bottom:86px;z-index:25;background:var(--wine);color:#fff;border-radius:2px;
   padding:11px 13px;font-size:11.5px;font-weight:600;line-height:1.45;text-align:center;box-shadow:0 3px 10px rgba(46,42,40,.3)}
 .sheet{position:fixed;inset:0;background:rgba(46,42,40,.55);z-index:80;display:flex;align-items:flex-end;justify-content:center}
@@ -262,9 +264,6 @@ textarea.inp{min-height:80px;resize:vertical;line-height:1.8;font-size:15px}
 .rv-big small{font-size:14px;font-weight:400;color:rgba(255,255,255,.88);margin-left:9px}
 .rv-score{margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.3)}
 .rv-score-l{font-size:12px;color:rgba(255,255,255,.9);text-align:left}
-.rv-spark{display:flex;align-items:flex-end;gap:5px;height:44px;margin-top:9px}
-.rv-spark span{flex:1;height:100%;display:flex;align-items:flex-end;background:rgba(255,255,255,.15);border-radius:2px;overflow:hidden}
-.rv-spark i{display:block;width:100%;background:#fff;border-radius:2px}
 .rv-item{background:var(--card);border:1px solid var(--line);border-radius:2px;margin:0 20px 9px;overflow:hidden}
 .rv-h{display:flex;align-items:center;gap:12px;padding:14px;width:100%;text-align:left}
 .rv-g{font-family:var(--serif);font-size:17px;font-weight:400;letter-spacing:.04em}
@@ -1342,7 +1341,7 @@ const emptyForm = () => ({
   name: "", producer: "", country: "", region: "", grape: "", vintage: "", alcohol: "",
   type: "red", ...emptySensory(), appearanceMemo: "", aromaMemo: "", palateMemo: "",
   rating: 0, memo: "",
-  blind: { on: false, done: false, grape: "", country: "", region: "", vintage: "", alcohol: "", memo: "", judge: {}, suggestions: null },
+  blind: { on: true, done: false, grape: "", country: "", region: "", vintage: "", alcohol: "", memo: "", judge: {}, suggestions: null },
   truthOn: false, truth: emptySensory(),
 });
 
@@ -1557,11 +1556,7 @@ function NewNote({ onSave, setToast, opts, addOpt, initial, onCancel, refs }) {
           <div className="fld"><label className="lab">飲んだ日</label>
             <input className="inp" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div></>
           : f.blind.done ? <div className="locked">ブラインド終了。ラベルの入力と答え合わせは06にあります。</div>
-            : <>
-              <div className="fld"><label className="lab">飲んだ日</label>
-                <input className="inp" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
-              <div className="locked">ブラインド中です。<br />02〜05を進めてから、06で自分の答えを書いてください。</div>
-            </>}
+            : null}
       </section>
 
       {/* 02 */}
@@ -1764,6 +1759,10 @@ function NewNote({ onSave, setToast, opts, addOpt, initial, onCancel, refs }) {
         </div>
         <div className="fld"><label className="lab">自由メモ</label>
           <textarea className="inp" value={f.memo} onChange={(e) => set("memo", e.target.value)} placeholder="誰と、何を食べながら飲んだか。" /></div>
+        {blindOn && (
+          <div className="fld"><label className="lab">飲んだ日</label>
+            <input className="inp" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
+        )}
       </section>
 
       <div className="savebar">
@@ -1952,8 +1951,8 @@ function Notebook({ notes, onOpen, setToast, refs }) {
                 <div className="card-t">
                   <span className="card-sw" style={{ background: sw }} />
                   <div style={{ minWidth: 0 }}>
-                    <div className="card-nm">{n.name || "名前のないワイン"}</div>
-                    <div className="card-sub">{[n.grape, n.country, n.vintage].filter(Boolean).join(" · ")}</div>
+                    <div className="card-nm">{[n.grape, n.country].filter(Boolean).join("　") || "品種・産地なし"}</div>
+                    <div className="card-sub">{[n.name, n.vintage].filter(Boolean).join(" · ") || "名前のないワイン"}</div>
                     {n.blind?.on && <span className={"badge " + (g ? "ok" : "ng")}>{g ? "品種 正解" : "品種 不正解"}</span>}
                   </div>
                   <div className="card-r">
@@ -2110,12 +2109,6 @@ function Review({ notes, onOpen }) {
         {scored.length > 0 && (
           <div className="rv-score">
             <div className="rv-score-l">採点済み {scored.length}本　平均 {avg.toFixed(1)}点 / 50　最高 {best.toFixed(1)}点</div>
-            <div className="rv-spark">
-              {scored.slice(-8).map((x, i) => (
-                <span key={i}><i style={{ height: Math.max(4, Math.min(100, x.pct)) + "%" }} /></span>
-              ))}
-            </div>
-            <div className="rv-score-l" style={{ marginTop: 6 }}>直近{Math.min(8, scored.length)}本の得点推移（左が古い）</div>
           </div>
         )}
       </div>
