@@ -222,8 +222,8 @@ textarea.inp{min-height:80px;resize:vertical;line-height:1.8;font-size:15px}
 .card-t{display:flex;gap:12px;align-items:flex-start}
 .card-sw{width:14px;height:38px;border-radius:2px;flex:none}
 .card-nm{font-family:var(--serif);font-size:18px;font-weight:400;letter-spacing:.03em;line-height:1.45}
-.card-sub{font-size:12.5px;color:var(--sub);margin-top:4px}
-.card-r{margin-left:auto;text-align:right;flex:none}
+.card-sub{font-size:12.5px;color:var(--sub);margin-top:4px;line-height:1.6}
+.card-r{margin-left:auto;text-align:right;flex:none;padding-left:8px}
 .card-st{color:var(--wine);font-size:13px}
 .card-dt{font-family:var(--mono);font-size:11.5px;color:var(--sub);margin-top:5px}
 .card-w{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
@@ -241,8 +241,9 @@ textarea.inp{min-height:80px;resize:vertical;line-height:1.8;font-size:15px}
 .dt-hero img{width:100%;border-radius:2px;display:block}
 .dt-body{padding:18px 20px}
 .dt-nm{font-family:var(--serif);font-size:27px;font-weight:400;letter-spacing:.04em;line-height:1.4}
-.dt-sub{font-size:13px;color:var(--sub);margin-top:6px;line-height:1.75}
-.comment{background:var(--wine);color:#fff;padding:26px 22px;border-radius:2px;margin:20px 0;font-size:15px;line-height:2.05;position:relative;overflow:hidden}
+.dt-sub{font-size:13px;color:var(--sub);margin-top:7px}
+.dt-line{line-height:1.9}
+.comment{background:var(--wine);color:#fff;padding:22px;border-radius:2px;margin:0 0 6px;font-size:15px;line-height:2.05;position:relative;overflow:hidden}
 .comment::after{content:"W";position:absolute;right:2px;bottom:-46px;font-family:var(--serif);font-size:150px;line-height:1;color:rgba(255,255,255,.08);pointer-events:none}
 .comment-l{font-size:11px;font-weight:600;letter-spacing:.26em;color:rgba(255,255,255,.9);margin-bottom:14px;position:relative}
 .comment-l::after{content:"";display:block;width:32px;height:1px;background:rgba(255,255,255,.6);margin-top:10px}
@@ -1944,20 +1945,27 @@ function Notebook({ notes, onOpen, setToast, refs }) {
           {list.map((n) => {
             const hue = (n.appearance?.hue || [])[0];
             const sw = HUE_HEX[hue] || (n.type === "white" ? "#DFC352" : "#8D2030");
-            const words = [...(n.aroma1 || []), ...(n.aroma2 || [])].slice(0, 5);
+            // 一覧には「正解」を出す。ブラインドで外したときだけ自分の回答を添える
+            const src = n.truthOn && n.truth ? n.truth : n;
+            const words = [...(src.aroma1 || []), ...(src.aroma2 || [])].slice(0, 5);
             const g = n.blind?.on ? n.blind.judge?.grape : null;
             return (
               <button key={n.id} className="card" onClick={() => onOpen(n)}>
                 <div className="card-t">
                   <span className="card-sw" style={{ background: sw }} />
-                  <div style={{ minWidth: 0 }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
                     <div className="card-nm">{[n.grape, n.country].filter(Boolean).join("　") || "品種・産地なし"}</div>
-                    <div className="card-sub">{[n.name, n.vintage].filter(Boolean).join(" · ") || "名前のないワイン"}</div>
-                    {n.blind?.on && <span className={"badge " + (g ? "ok" : "ng")}>{g ? "品種 正解" : "品種 不正解"}</span>}
+                    <div className="card-sub">
+                      {[n.name, n.vintage, (n.date || "").replace(/-/g, ".")].filter(Boolean).join("　·　")}
+                    </div>
+                    {n.blind?.on && (
+                      <span className={"badge " + (g ? "ok" : "ng")}>
+                        {g ? "品種 正解" : `品種 不正解　自分：${n.blind.grape || "未記入"}`}
+                      </span>
+                    )}
                   </div>
                   <div className="card-r">
                     <div className="card-st">{"★".repeat(n.rating || 0)}</div>
-                    <div className="card-dt">{(n.date || "").replace(/-/g, ".")}</div>
                   </div>
                 </div>
                 {words.length > 0 && (
@@ -1976,6 +1984,7 @@ function Notebook({ notes, onOpen, setToast, refs }) {
 function Detail({ note, onBack, onDelete, onEdit, refs }) {
   const [photo, setPhoto] = useState(null);
   const [showRef, setShowRef] = useState(false);
+  const [showComment, setShowComment] = useState(false);
   useEffect(() => { if (note.hasPhoto) loadPhoto(note.id).then(setPhoto); }, [note.id]);
   const comment = buildComment(note);
   const b = note.blind;
@@ -1992,14 +2001,30 @@ function Detail({ note, onBack, onDelete, onEdit, refs }) {
       </div>
       {photo && <div className="dt-hero"><img src={photo} alt="ラベル" /></div>}
       <div className="dt-body">
-        <div className="dt-nm">{note.name || "名前のないワイン"}</div>
+        <div className="dt-nm">{[note.grape, note.country].filter(Boolean).join("　") || "品種・産地なし"}</div>
         <div className="dt-sub">
-          {[note.producer, note.grape, [note.country, note.region].filter(Boolean).join(" "), note.vintage, note.alcohol ? note.alcohol + "%" : ""].filter(Boolean).join("  ·  ")}
-          <br />{(note.date || "").replace(/-/g, ".")}
-          {note.rating ? <span style={{ color: "#6B1D1F" }}>　{"★".repeat(note.rating)}</span> : null}
+          {(note.name || note.producer) && (
+            <div className="dt-line">{[note.name, note.producer].filter(Boolean).join("　")}</div>
+          )}
+          {[note.region, note.vintage, note.alcohol ? note.alcohol + "%" : ""].filter(Boolean).length > 0 && (
+            <div className="dt-line">
+              {[note.region, note.vintage, note.alcohol ? note.alcohol + "%" : ""].filter(Boolean).join("　｜　")}
+            </div>
+          )}
+          <div className="dt-line">
+            {(note.date || "").replace(/-/g, ".")}
+            {note.rating ? <span style={{ color: "#6B1D1F" }}>　{"★".repeat(note.rating)}</span> : null}
+          </div>
         </div>
 
-        {comment && <div className="comment"><div className="comment-l">YOUR TASTING COMMENT</div>{comment}</div>}
+        {comment && (
+          <>
+            <button className={"cmp-toggle" + (showComment ? " on" : "")} onClick={() => setShowComment(!showComment)}>
+              テイスティングコメント{showComment ? "　▲" : "　▼"}
+            </button>
+            {showComment && <div className="comment"><div className="comment-l">YOUR TASTING COMMENT</div>{comment}</div>}
+          </>
+        )}
 
         {b?.on && (
           <div className="dt-sec">
